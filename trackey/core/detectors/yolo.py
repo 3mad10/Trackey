@@ -31,8 +31,6 @@ class YoloDetector(DetectorBase):
         # We are infering on one frame so get the result of that frame 
         frame_detections = results[0].boxes
         for i, detection in enumerate(frame_detections):
-            print(f"detectionnnnn {i} ")
-            print(detection)
             bbox = BoundingBox(cx=detection.xywhn[0][0] + detection.xywhn[0][2]/2,
                                cy=detection.xywhn[0][1] + detection.xywhn[0][3]/2,
                                w=detection.xywhn[0][2],

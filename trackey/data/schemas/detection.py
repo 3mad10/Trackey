@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, validator
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from typing import List, Optional, Tuple
 import numpy as np
@@ -56,7 +56,7 @@ class BoundingBox(BaseModel):
             return (int(x1 * img_width), int(y1 * img_height),
                     int(x2 * img_width), int(y2 * img_height))
         return (x1, y1, x2, y2)
-    
+
     @property
     def xywh(self, img_width: Optional[int] = None,
                 img_height: Optional[int] = None) -> Tuple[float, ...]:
@@ -69,6 +69,22 @@ class BoundingBox(BaseModel):
             return (int(x1 * img_width), int(y1 * img_height),
                     int(w * img_width), int(h * img_height))
         return (x1, y1, w, h)
+
+    def to_pixel_xyxy(self, img_width: int, img_height: int):
+        """Convert to pixel coordinates in xyxy format"""
+        x1, y1, x2, y2 = self.xyxy
+        return (
+            int(x1 * img_width), int(y1 * img_height),
+            int(x2 * img_width), int(y2 * img_height)
+        )
+
+    def to_pixel_xywh(self, img_width: int, img_height: int):
+        """Convert to pixel coordinates in xywh format"""
+        x1, y1, w, h = self.xywh
+        return (
+            int(x1 * img_width), int(y1 * img_height),
+            int(w * img_width), int(h * img_height)
+        )
 
     class Config:
         # Enable ORM mode for database integration
@@ -89,10 +105,9 @@ class Detection(BaseModel):
     class_id: int = Field(ge=0)
     class_name: str = Field(max=512, description="Confidence of the detection")
     confidence: float = Field(ge=0, le=1, description="Confidence of the detection")
-    bbox: BoundingBox
+    bbox: BoundingBox  #TODO make optional and check list of points or bounding box exist
     points: Optional[List[Point]] = Field(None, description="List of detection points")
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     # frame_number: int = Field(ge=0, description="Defined Corner Coordinates representation x_min, y_min, x_max, y_max")
     features: Optional[List[float]] = Field(None, description="Feature embedding vector")
     metadata: Optional[dict] = Field(None, description="Additional metadata for detection to be used in post processing")
-
