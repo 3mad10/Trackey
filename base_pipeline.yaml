@@ -1,0 +1,11 @@
+pipeline:
+  - name: detector
+    kind: detector
+    type: yolo
+    params:
+      weights: yolov8n.pt
+
+  - name: tracker
+    kind: tracker
+    type: deepsort
+    params: []
