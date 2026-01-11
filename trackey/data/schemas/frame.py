@@ -14,7 +14,7 @@ class Frame(BaseModel):
     def __getattr__(self, item):
         """Delegate missing attributes (like .shape) to the numpy array."""
         return getattr(self.frame, item)
-    
+
     def __getitem__(self, key):
         """Allow slicing like frame[y1:y2, x1:x2]."""
         return self.frame[key]

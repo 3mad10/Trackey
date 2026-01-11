@@ -1,23 +1,29 @@
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
-from typing import List, Union
-from .detection import Detection
+from typing import List, Union, Tuple
+from collections import deque
+from trackey.data.schemas.detection import Detection
 
 
 class Track(BaseModel):
     id: UUID = Field(default_factory=uuid4)
-    private_id: Union[UUID, int] = Field(description="Track id generated for the track by the tracker library")
-    detections: List[Detection]
-    confidence: float = Field(ge=0.0, le=1.0, description="Confidence of the detection")
+    private_id: Union[UUID, int]
+    detections: deque[Detection] = Field(
+        default_factory=lambda: deque(maxlen=30)
+    )
+    confidence: float = Field(ge=0.0, le=1.0)
     last_seen: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    view_track: bool = True
 
-    def __str__(self) -> str:
-        return (f"Track(id={self.id}, private_id={self.private_id}, "
-                f"confidence={self.confidence:.2f}, "
-                f"detections={len(self.detections)}, "
-                f"last_seen={self.last_seen.isoformat()})")
+    @property
+    def trajectory(self) -> List[Tuple[float, float]]:
+        points = []
 
-    def __repr__(self) -> str:
-        # Use same string for repr so printing lists of Tracks is clean
-        return self.__str__()
+        for det in self.detections:
+            if det.bbox is not None:
+                points.append((det.bbox.cx, det.bbox.cy))
+            elif det.points is not None:
+                points.append(det.points)
+
+        return points

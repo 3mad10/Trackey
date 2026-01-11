@@ -1,17 +1,19 @@
-from trackey.core.base.DetectorBase import DetectorBase
-from trackey.data.schemas.detection import Detection, BoundingBox
-from trackey.data.schemas.frame import Frame
 from typing import List
 
+from trackey.core.interfaces.detector import Detector
+from trackey.data.schemas.detection import Detection, BoundingBox
+from trackey.data.schemas.frame import Frame
+from trackey.core.register import register_detector
 
-class YoloDetector(DetectorBase):
-    def __init__(self, version="yolov8n.pt"):
+@register_detector('yolo')
+class YoloDetector(Detector):
+    def __init__(self, weights="yolov8n.pt"):
         try:
             from ultralytics import YOLO
         except ModuleNotFoundError:
             print("Run \'pip install ultralytics\' to run yolo detector")
-        self.model = YOLO(version)
-        self.version = version
+        self.model = YOLO(weights)
+        self.weights = weights
         self.names = None
 
     def detect(self, frame: Frame) -> List[Detection]:
@@ -19,12 +21,12 @@ class YoloDetector(DetectorBase):
         Detect the objects in one frame and return it as a list of Detection object
 
         Parameters:
-        Frame (numpy ndarray): current frame.
+        Frame (numpy ndarray, w, h): current frame.
 
         Returns:
         List[Detection]: List of Detection objects.
         """
-        results = self.model(frame)
+        results = self.model(frame.frame)
         if not self.names:
             self.names = results[0].names
         detections = []
@@ -48,5 +50,5 @@ if __name__=='__main__':
     image_path = "C:/Users/Mohamed Emad/OneDrive/Pictures/New York/20221203_203840.jpg"  # Replace with the actual path to your image
     image = cv2.imread(image_path)
     detector = YoloDetector()
-    
+
     print(detector.detect(image))
