@@ -4,8 +4,3 @@ pipeline:
     type: yolo
     params:
       weights: yolov8n.pt
-
-  - name: tracker
-    kind: tracker
-    type: deepsort
-    params: []

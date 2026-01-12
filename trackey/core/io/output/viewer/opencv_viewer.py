@@ -1,12 +1,13 @@
 import cv2
 import numpy as np
 from uuid import UUID
-from typing import Union, Optional
+from typing import Union, Optional, List
 
 from trackey.core.io.output.viewer.base import OutputViewer
-from trackey.core.io.output.viewer.drawable import BBoxDrawable, PointDrawable, detection_to_drawables
+from trackey.core.io.output.viewer.drawable import BBoxDrawable, PointDrawable, detection_to_drawables, track_to_drawables
 from trackey.data.schemas.frame import Frame
 from trackey.data.schemas.track import Track
+from trackey.data.schemas.detection import Detection
 from trackey.data.schemas.view import GlobalStateBox, GlobalStateBoxPlacement
 
 
@@ -22,27 +23,27 @@ class OpenCVViewer(OutputViewer):
         if key in (ord("q"), 27):
             raise KeyboardInterrupt
 
-    def show(self, frame: Optional[Frame], tracks: list[Track]):
+    def show(self, frame: Optional[Frame], data: dict):
         if frame is None:
             return
 
         img = frame.frame.copy()
 
-        for track in tracks:
-            if not track.view_track:
-                continue
-
-            if not track.detections:
-                continue
-
-            det = track.detections[-1]
-            if det is None:
-                continue
-
-            drawables = detection_to_drawables(det, frame)
-
-            for drawable in drawables:
+        detections = data.get("detections", [])
+        for det in detections:
+            for drawable in detection_to_drawables(det, frame):
                 drawable.draw(img)
+
+        tracks = data.get("tracks", [])
+        for track in tracks:
+            if not track.view_track or not track.detections:
+                continue
+            det = track.detections[-1]
+            for drawable in detection_to_drawables(det, frame):
+                drawable.draw(img)
+
+        analytics = data.get("analytics", {})
+        # draw activities, counters, heatmaps, etc.
 
         self._render(img)
 
