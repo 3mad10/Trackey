@@ -8,7 +8,7 @@ from typing import Union, Optional
 
 class OutputViewer(ABC):
     @abstractmethod
-    def show(self, frame: Optional[Frame], tracks: list[Track]):
+    def show(self, frame: Optional[Frame], data: dict):
         pass
 
     @abstractmethod

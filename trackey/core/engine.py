@@ -21,6 +21,7 @@ class Engine:
         self.source.open()
         if self.viewer:
             self.viewer.open()
+
         try:
             while True:
                 frame = self.source.read()
@@ -28,16 +29,18 @@ class Engine:
                     break
 
                 result = self.pipeline.run(frame)
+
                 if self.viewer:
-                    self.viewer.show(
-                        frame=result.get("frame"),
-                        tracks=result.get("tracks", [])
-                    )
+                    self.viewer.show(frame, result)
+
         except KeyboardInterrupt:
-            print("[Engine] Engine Stopped by user")
-        if self.viewer:
-            self.viewer.close()
-        self.source.release()
+            print("[Engine] Engine stopped by user")
+
+        finally:
+            if self.viewer:
+                self.viewer.close()
+            self.source.release()
+
 
 
 if __name__ == '__main__':

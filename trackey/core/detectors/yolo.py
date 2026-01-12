@@ -26,17 +26,20 @@ class YoloDetector(Detector):
         Returns:
         List[Detection]: List of Detection objects.
         """
-        results = self.model(frame.frame)
+        results = self.model.predict(frame.frame)
         if not self.names:
             self.names = results[0].names
         detections = []
         # We are infering on one frame so get the result of that frame 
         frame_detections = results[0].boxes
         for i, detection in enumerate(frame_detections):
-            bbox = BoundingBox(cx=detection.xywhn[0][0] + detection.xywhn[0][2]/2,
-                               cy=detection.xywhn[0][1] + detection.xywhn[0][3]/2,
-                               w=detection.xywhn[0][2],
-                               h=detection.xywhn[0][3])
+            xywhn = detection.xywhn[0]
+            bbox = BoundingBox(
+                    cx=float(xywhn[0]),
+                    cy=float(xywhn[1]),
+                    w=float(xywhn[2]),
+                    h=float(xywhn[3]),
+                )
             detection = Detection(bbox=bbox,
                                   confidence=detection.conf[0],
                                   class_id=int(detection.cls[0]),
@@ -50,5 +53,5 @@ if __name__=='__main__':
     image_path = "C:/Users/Mohamed Emad/OneDrive/Pictures/New York/20221203_203840.jpg"  # Replace with the actual path to your image
     image = cv2.imread(image_path)
     detector = YoloDetector()
-
-    print(detector.detect(image))
+    frame = Frame(frame = image, width=image.shape[1], height=image.shape[0])
+    # print(detector.detect(frame=frame))
