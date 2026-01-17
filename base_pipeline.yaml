@@ -1,6 +1,6 @@
 pipeline:
   - name: detector
     kind: detector
-    type: yolo
+    type: mediapipe
     params:
       weights: yolov8n.pt

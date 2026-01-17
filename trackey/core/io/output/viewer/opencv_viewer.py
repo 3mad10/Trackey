@@ -31,7 +31,10 @@ class OpenCVViewer(OutputViewer):
 
         detections = data.get("detections", [])
         for det in detections:
-            for drawable in detection_to_drawables(det, frame):
+            print("Detection : ", det)
+            print("class_name : ", det.class_name)
+            drawables = detection_to_drawables(det, frame)
+            for drawable in drawables:
                 drawable.draw(img)
 
         tracks = data.get("tracks", [])

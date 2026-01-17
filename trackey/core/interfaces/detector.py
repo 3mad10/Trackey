@@ -8,3 +8,7 @@ class Detector(ABC):
     @abstractmethod
     def detect(self, frame: Frame) -> List[Detection]:
         pass
+
+    @abstractmethod
+    def close(self):
+        pass

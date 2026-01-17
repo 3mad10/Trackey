@@ -47,6 +47,9 @@ class YoloDetector(Detector):
             detections.append(detection)
         return detections
 
+    def close(self):
+        pass
+
 
 if __name__=='__main__':
     import cv2
