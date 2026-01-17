@@ -64,18 +64,16 @@ class TextDrawable(Drawable):
         )
 
 
-
-
 def get_metadata_drawables(metadata: dict, bbox_xyxy: tuple[int, int, int, int]) -> list[Drawable]:
     drawables = []
     if not metadata:
         return drawables
 
     x1, y1, _, _ = bbox_xyxy
-    
+
     # Start drawing text above the bbox
     text_y = y1 - 10
-    
+
     for key, value in metadata.items():
         text = f"{key}: {value}"
         drawables.append(TextDrawable(text, (x1, text_y)))
@@ -90,7 +88,9 @@ def detection_to_drawables(det: Detection, frame: Frame):
     if det.bbox:
         bbox = det.bbox.to_pixel_xyxy(frame.width, frame.height)
         drawables.append(BBoxDrawable(bbox))
-        
+
+        if det.class_name:
+            drawables.extend(get_metadata_drawables({"Class: ": det.class_name}, bbox))
         if det.metadata:
             drawables.extend(get_metadata_drawables(det.metadata, bbox))
 

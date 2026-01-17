@@ -71,6 +71,43 @@ class BoundingBox(BaseModel):
         )
 
 
+class Keypoint(BaseModel):
+    name: str = Field(description="Keypoint semantic name (e.g. left_eye)")
+    point: Point
+    confidence: float = Field(ge=0.0, le=1.0)
+
+    def to_pixel(self, w: int, h: int):
+        return self.point.to_pixel(w, h)
+
+
+class Keypoints(BaseModel):
+    items: List[Keypoint]
+    format: str = Field(
+        default="coco",
+        description="Keypoint format convention"
+    )
+
+    def as_numpy(self) -> np.ndarray:
+        """(N, 3) -> x, y, conf"""
+        return np.array([
+            [kp.point.x, kp.point.y, kp.confidence]
+            for kp in self.items
+        ])
+
+    def as_bbox(self) -> BoundingBox:
+        x_points = [kp.point.x for kp in self.items]
+        y_points = [kp.point.y for kp in self.items]
+        min_x = min(x_points)
+        max_x = max(x_points)
+        min_y = min(y_points)
+        max_y = max(y_points)
+        cx = (min_x + ((max_x-min_x) / 2))
+        cy = (min_y + ((max_y-min_y) / 2))
+        w = max_x-min_x
+        h = max_y-min_y
+        return BoundingBox(cx=cx, cy=cy, w=w, h=h)
+
+
 class Detection(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     class_id: int = Field(ge=0)
@@ -79,7 +116,7 @@ class Detection(BaseModel):
 
     bbox: Optional[BoundingBox] = None
     points: Optional[List[Point]] = None
-    keypoints: Optional[List[Point]] = None
+    keypoints: Optional[Keypoints] = None
 
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     features: Optional[List[float]] = None
@@ -90,12 +127,8 @@ class Detection(BaseModel):
         geometries = [
             self.bbox is not None,
             bool(self.points),
-            bool(self.keypoints),
+            self.keypoints is not None,
         ]
-
         if sum(geometries) != 1:
-            raise ValueError(
-                "Detection must have exactly one geometry type"
-            )
-
+            raise ValueError("Detection must have exactly one geometry type")
         return self

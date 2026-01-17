@@ -4,19 +4,23 @@ import numpy as np
 
 class Frame(BaseModel):
     frame: np.ndarray
-    width: int
-    height: int
 
     model_config = {
         "arbitrary_types_allowed": True
     }
 
+    @property
+    def height(self) -> int:
+        return self.frame.shape[0]
+
+    @property
+    def width(self) -> int:
+        return self.frame.shape[1]
+
     def __getattr__(self, item):
-        """Delegate missing attributes (like .shape) to the numpy array."""
         return getattr(self.frame, item)
 
     def __getitem__(self, key):
-        """Allow slicing like frame[y1:y2, x1:x2]."""
         return self.frame[key]
 
     @field_validator("frame")
@@ -24,3 +28,4 @@ class Frame(BaseModel):
         if not isinstance(v, np.ndarray):
             raise TypeError("frame must be a numpy.ndarray")
         return v
+
