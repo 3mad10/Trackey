@@ -30,6 +30,7 @@ class OpenCVViewer(OutputViewer):
         img = frame.frame.copy()
 
         detections = data.get("detections", [])
+
         for det in detections:
             print("Detection : ", det)
             print("class_name : ", det.class_name)

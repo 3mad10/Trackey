@@ -11,7 +11,8 @@ class YoloDetector(Detector):
         try:
             from ultralytics import YOLO
         except ModuleNotFoundError:
-            print("Run \'pip install ultralytics\' to run yolo detector")
+            raise ModuleNotFoundError("Run 'pip install ultralytics' to use the YOLO detector")
+        
         self.model = YOLO(weights)
         self.weights = weights
         self.names = None

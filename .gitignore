@@ -209,3 +209,8 @@ __marimo__/
 
 *.zip
 **/HMDB51/
+
+# ML
+*.pt
+*.task
+*.onnx
