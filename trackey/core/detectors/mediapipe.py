@@ -4,7 +4,7 @@ import platform
 import urllib.request
 
 from trackey.core.interfaces.detector import Detector
-from trackey.data.schemas.detection import Detection, BoundingBox
+from trackey.data.schemas.detection import Detection, Keypoints, Keypoint, Point
 from trackey.data.schemas.frame import Frame
 from trackey.core.register import register_detector
 
@@ -16,6 +16,50 @@ MODEL_URL = (
 
 @register_detector('mediapipe')
 class MPLandmarkDetector(Detector):
+    MEDIAPIPE_BODY_PART = {
+        0: "head",
+        1: "head",
+        2: "head",
+        3: "head",
+        4: "head",
+        5: "head",
+        6: "head",
+        7: "head",
+        8: "head",
+        9: "head",
+        10: "head",
+
+        11: "left_arm",
+        12: "right_arm",
+
+        13: "left_arm",
+        14: "right_arm",
+
+        15: "left_hand",
+        16: "right_hand",
+
+        17: "left_hand",
+        18: "right_hand",
+        19: "left_hand",
+        20: "right_hand",
+        21: "left_hand",
+        22: "right_hand",
+
+        23: "left_leg",
+        24: "right_leg",
+
+        25: "left_leg",
+        26: "right_leg",
+
+        27: "left_leg",
+        28: "right_leg",
+
+        29: "left_foot",
+        30: "right_foot",
+
+        31: "left_foot",
+        32: "right_foot",
+    }
     def __init__(self, weights="pose_landmarker_lite.task"):
         try:
             import mediapipe as mp
@@ -49,7 +93,19 @@ class MPLandmarkDetector(Detector):
         List[Detection]: List of Detection objects.
         """
         results = self.model.detect(self.mp.Image(image_format=self.mp.ImageFormat.SRGB, data=frame.frame))
-        return results
+        # print("================================")
+        dets = []
+        # print(len(results.pose_landmarks))
+        for pose_landmark in results.pose_landmarks:
+            # print(len(pose_landmark))
+            # print(pose_landmark)adwx
+            points = Keypoints(items=[])
+            for idx, keypoint in enumerate(pose_landmark):
+                keypoint_name = self.MEDIAPIPE_BODY_PART[idx]
+                points.items.append(Keypoint(name=keypoint_name, point=Point(x=keypoint.x, y=keypoint.y)))
+            dets.append(Detection(class_name='Person', class_id=0, confidence=1, keypoints=points)) 
+        # print(dets)       
+        return dets
 
     def close(self):
         if self.model:

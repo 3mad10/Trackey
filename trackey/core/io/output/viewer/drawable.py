@@ -98,7 +98,10 @@ def detection_to_drawables(det: Detection, frame: Frame):
         drawables.append(PointDrawable(det.points))
 
     if det.keypoints:
-        drawables.append(KeypointsDrawable(det.keypoints))
+        keypoints = det.keypoints.to_pixel_xy(frame.width, frame.height)
+        bbox = det.keypoints.as_bbox().to_pixel_xyxy(frame.width, frame.height)
+        drawables.append(KeypointsDrawable(keypoints))
+        drawables.append(BBoxDrawable(bbox))
 
     return drawables
 
