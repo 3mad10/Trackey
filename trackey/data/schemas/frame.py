@@ -1,6 +1,7 @@
-from pydantic import BaseModel, field_validator
 import numpy as np
-
+from pydantic import BaseModel, field_validator
+from trackey.data.schemas.geometry import Zone
+from typing import List
 
 class Frame(BaseModel):
     frame: np.ndarray
@@ -28,4 +29,5 @@ class Frame(BaseModel):
         if not isinstance(v, np.ndarray):
             raise TypeError("frame must be a numpy.ndarray")
         return v
+
 

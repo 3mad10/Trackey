@@ -150,7 +150,7 @@ class Detection(BaseModel):
     class_name: str = Field(max_length=512, description="Class label name")
     confidence: float = Field(ge=0, le=1)
 
-    bbox: Optional[BoundingBox] = None
+    bbox: Optional[BoundingBox] = None #TODO: Make bounding box mandatory
     points: Optional[List[Point]] = None
     keypoints: Optional[Keypoints] = None
 

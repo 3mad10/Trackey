@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, List, Tuple
 from datetime import datetime, timezone
 from collections import deque
@@ -9,13 +10,16 @@ from trackey.data.schemas.frame import Frame
 from trackey.core.register import register_tracker
 
 
+logger = logging.getLogger(__name__)
+
 @register_tracker('deepsort')
 class DeepSortTracker(Tracker):
     def __init__(self, **kwargs):
         try:
             from deep_sort_realtime.deepsort_tracker import DeepSort
-        except ModuleNotFoundError:
-            print("Run \'pip install deep-sort-realtime\' to run DeepSort tracker")
+        except ModuleNotFoundError as e:
+            logger.error(f"[DeepSortTracker] Run \'pip install deep-sort-realtime\' to run DeepSort tracker")
+            raise e
         self.tracker = DeepSort(**kwargs)
         self.tracks: dict[int, Track] = {}
 
@@ -61,7 +65,7 @@ class DeepSortTracker(Tracker):
                     confidence=1.0,
                 )
 
-        # 🔥 REMOVE DEAD TRACKS
+        # REMOVE DEAD TRACKS
         for tid in list(self.tracks.keys()):
             if tid not in alive_ids:
                 del self.tracks[tid]
