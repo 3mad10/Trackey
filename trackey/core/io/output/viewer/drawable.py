@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 import cv2
+from typing import List, Tuple
 from trackey.data.schemas.detection import Detection
 from trackey.data.schemas.frame import Frame
 from trackey.data.schemas.track import Track
@@ -41,6 +42,132 @@ class KeypointsDrawable(Drawable):
     def draw(self, image):
         for pt in self.keypoints:
             cv2.circle(image, pt, 2, self.color, -1)
+
+
+class PolygonDrawable(Drawable):
+    """Draw polygon/zone on frame"""
+    
+    def __init__(self, 
+                 points: List[Tuple[float, float]],
+                 frame_width: int,
+                 frame_height: int,
+                 color: Tuple[int, int, int] = (255, 0, 0),
+                 thickness: int = 2,
+                 filled: bool = False,
+                 alpha: float = 0.3,
+                 label: str = None):
+        """
+        Args:
+            points: List of (x, y) in normalized coords (0-1)
+            frame_width: Frame width in pixels
+            frame_height: Frame height in pixels
+            color: BGR color tuple
+            thickness: Line thickness (ignored if filled=True)
+            filled: If True, draw filled polygon with transparency
+            alpha: Transparency (0=invisible, 1=opaque) for filled polygons
+            label: Optional text label for the zone
+        """
+        self.points = points
+        self.frame_width = frame_width
+        self.frame_height = frame_height
+        self.color = color
+        self.thickness = thickness
+        self.filled = filled
+        self.alpha = alpha
+        self.label = label
+    
+    def draw(self, image: np.ndarray):
+        """Draw polygon on image"""
+        # Convert normalized points to pixel coordinates
+        pixel_points = []
+        for x, y in self.points:
+            px = int(x * self.frame_width)
+            py = int(y * self.frame_height)
+            pixel_points.append((px, py))
+        
+        pts = np.array(pixel_points, np.int32)
+        pts = pts.reshape((-1, 1, 2))
+        
+        if self.filled:
+            # Draw filled polygon with transparency
+            overlay = image.copy()
+            cv2.fillPoly(overlay, [pts], self.color)
+            cv2.addWeighted(overlay, self.alpha, image, 1 - self.alpha, 0, image)
+        else:
+            # Draw polygon outline
+            cv2.polylines(image, [pts], isClosed=True, color=self.color, 
+                         thickness=self.thickness)
+        
+        # Draw label if provided
+        if self.label and len(pixel_points) > 0:
+            # Position label at top-left corner of polygon
+            label_x, label_y = pixel_points[0]
+            cv2.putText(
+                image,
+                self.label,
+                (label_x, label_y - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                self.color,
+                2,
+                cv2.LINE_AA
+            )
+
+
+class LineDrawable(Drawable):
+    """Draw line on frame"""
+    
+    def __init__(self,
+                 start: Tuple[float, float],  # Normalized
+                 end: Tuple[float, float],    # Normalized
+                 frame_width: int,
+                 frame_height: int,
+                 color: Tuple[int, int, int] = (255, 0, 0),  # Blue
+                 thickness: int = 3,
+                 label: str = None):
+        """
+        Args:
+            start: Start point (x, y) normalized
+            end: End point (x, y) normalized
+            frame_width: Frame width in pixels
+            frame_height: Frame height in pixels
+            color: BGR color
+            thickness: Line thickness
+            label: Optional label
+        """
+        self.start = start
+        self.end = end
+        self.frame_width = frame_width
+        self.frame_height = frame_height
+        self.color = color
+        self.thickness = thickness
+        self.label = label
+    
+    def draw(self, image: np.ndarray):
+        """Draw line on image"""
+        # Convert to pixels
+        start_px = (int(self.start[0] * self.frame_width),
+                   int(self.start[1] * self.frame_height))
+        end_px = (int(self.end[0] * self.frame_width),
+                 int(self.end[1] * self.frame_height))
+        
+        # Draw line
+        cv2.line(image, start_px, end_px, self.color, self.thickness)
+        
+        # Draw label
+        if self.label:
+            mid_x = (start_px[0] + end_px[0]) // 2
+            mid_y = (start_px[1] + end_px[1]) // 2
+            cv2.putText(
+                image,
+                self.label,
+                (mid_x, mid_y - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                self.color,
+                2,
+                cv2.LINE_AA
+            )
 
 
 class TextDrawable(Drawable):

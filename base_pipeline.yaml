@@ -1,6 +1,28 @@
+scene:
+  zones:
+    - name: AreaA
+      polygon:
+        - [0.0,0.5] # top left
+        - [1.0,0.5] # top right
+        - [1.0,1.0] # buttom right
+        - [0.0,1.0] # buttom left
+
+      color: [255,0,0]
+
 pipeline:
   - name: detector
-    kind: detector
-    type: mediapipe
+    component: detector
+    type: yolo
     params:
       weights: yolov8n.pt
+  - name: tracker
+    component: tracker
+    type: deepsort
+    params:
+      max_age: 30
+  - name: people_counter
+    component: analyzer
+    type: counter
+    params:
+      object: person
+      zone: AreaA

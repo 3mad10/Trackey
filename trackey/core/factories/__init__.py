@@ -1,5 +1,6 @@
 from .detector import build_detector
 from .tracker import build_tracker
+from .analyzer import build_analyzer
 from trackey.core.pipeline.nodes import (
     DetectorNode,
     TrackerNode,
@@ -11,6 +12,7 @@ from trackey.core.pipeline.nodes import (
 FACTORY_ROUTER = {
     "detector": build_detector,
     "tracker": build_tracker,
+    "analyzer": build_analyzer,
 }
 
 

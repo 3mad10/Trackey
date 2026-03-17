@@ -4,6 +4,8 @@ from trackey.core.io.output.viewer import *
 from trackey.core.interfaces import *
 from trackey.core.pipeline import PipelineExecutor
 from trackey.core.factories.pipeline import PipelinBuilder
+from trackey.core.factories.scene import SceneBuilder
+
 
 
 class Engine:
@@ -48,7 +50,11 @@ if __name__ == '__main__':
     from trackey.core.io.output.viewer import OpenCVViewer
     from trackey.core.detectors import YoloDetector
     from trackey.core.trackers import DeepSortTracker
-    pipeline_builder = PipelinBuilder(cfg_path="base_pipeline.yaml")
+    from trackey.core.analyzers import Counter
+    scene = SceneBuilder(cfg_path="base_pipeline.yaml").build()
+    pipeline_builder = PipelinBuilder(cfg_path="base_pipeline.yaml", scene=scene)
     pipeline = PipelineExecutor(pipeline_builder.build())
-    engine = Engine(source=CameraSource(device_id=0), pipeline=pipeline, viewer=OpenCVViewer())
+    engine = Engine(source=CameraSource(device_id=0),
+                    pipeline=pipeline,
+                    viewer=OpenCVViewer(scene=scene))
     engine.run()

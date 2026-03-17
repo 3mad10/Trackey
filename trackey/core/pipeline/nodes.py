@@ -100,3 +100,25 @@ class PostprocessorNode(PipelineNode):
         processed_tracks = self.postprocessor.process(tracks)
         data["tracks"] = processed_tracks
         return data
+
+
+class AnalyzerNode(PipelineNode):
+    def __init__(self, analyzer, key: str):
+        self.analyzer = analyzer
+        self.key = key
+    
+    def process(self, data: Dict) -> Dict:
+        frame = data.get("frame")
+        tracks = data.get("tracks", [])
+        
+        if not tracks:
+            return data
+        
+        result = self.analyzer.analyze(tracks, frame)
+        
+        # Store analytics result
+        if "analytics" not in data:
+            data["analytics"] = {}
+        data["analytics"][self.key] = result
+        
+        return data
