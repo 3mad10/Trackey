@@ -1,50 +1,67 @@
-from typing import List, Dict, Any, Tuple
-from trackey.core.analyzers.base import BaseAnalyzer
-from trackey.data.schemas.geometry import Zone
+from typing import List, Dict, Any
+from collections import defaultdict
+import logging
+
+
+from trackey.core.interfaces import Analyzer
 from trackey.data.schemas.track import Track
 from trackey.data.schemas.frame import Frame
 from trackey.core.register import register_analyzer
 
 
+logger = logging.getLogger(__name__)
+
 @register_analyzer('counter')
-class Counter(BaseAnalyzer):
+class Counter(Analyzer):
     """
-    Count object in a specific zone.
-    Zone is part of the analyzer configuration.
+    Count metrices per object.
     """
-    
-    def __init__(self,
-                 object: str,
-                 zone: Zone = None,
-                 count_type: str = "current"):
-        """
-        Args:
-            zone: Zone to count object in. If None, counts all.
-            count_type: Type of count to return
-        """
-        super().__init__(zone=zone)
-        self.object = object
-        self.count_type = count_type
-        self.cumulative_count = 0
-        self.max_count = 0
-    
-    def _analyze_impl(self, tracks: List[Track], frame: Frame) -> Dict[str, Any]:
-        """Count object in filtered tracks"""
-        current_count = 0
+    VALID_METRICS = {
+        "current",
+        "peak",
+        "cumulative",
+    }
+
+    def __init__(
+        self,
+        target_classes: List[str] = None,
+        metrics: List[str] = None
+    ):
+
+        self.target_classes = (
+            {c.lower() for c in target_classes}
+            if target_classes else None
+        )
+        self.metrics = set(metrics or ["current"])
+        for metric in self.metrics:
+            if metric not in self.VALID_METRICS:
+                raise ValueError(f"[Analyzer][Counter] Unknown metric {metric}")
+
+        self.peak_counts = defaultdict(int)
+        self.unique_tracks = defaultdict(set)
+
+    def analyze(
+        self,
+        tracks: List[Track],
+        frame: Frame = None
+    ) -> Dict[str, Any]:
+
+        current_counts = defaultdict(int)
+
         for track in tracks:
-            if track.detections[-1].class_name.lower() == self.object.lower():
-                current_count+=1
-        
-        if self.count_type == "cumulative":
-            self.cumulative_count += current_count
-            count = self.cumulative_count
-        elif self.count_type == "max":
-            self.max_count = max(self.max_count, current_count)
-            count = self.max_count
-        else:
-            count = current_count
-        
-        return {
-            "count": count,
-            "count_type": self.count_type,
-        }
+            track_class = track.detections[-1].class_name.lower()
+            if self.target_classes is None or track_class in self.target_classes:
+                current_counts[track_class] += 1
+                self.unique_tracks[track_class].add(track.id)
+
+        result = {}
+        for class_name, count in current_counts.items():
+            result[class_name] = {}
+            if "current" in self.metrics:
+                result[class_name]["current"] = count
+            if "peak" in self.metrics:
+                self.peak_counts[class_name] = max(self.peak_counts[class_name], count)
+                result[class_name]["peak"] = self.peak_counts[class_name]
+            if "cumulative" in self.metrics:
+                result[class_name]["cumulative"] = len(self.unique_tracks[class_name])
+        return result

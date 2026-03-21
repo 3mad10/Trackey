@@ -5,7 +5,7 @@ from trackey.core.interfaces import *
 from trackey.core.pipeline import PipelineExecutor
 from trackey.core.factories.pipeline import PipelinBuilder
 from trackey.core.factories.scene import SceneBuilder
-
+from trackey.data.schemas.pipeline import PipelineResult
 
 
 class Engine:
@@ -30,8 +30,15 @@ class Engine:
                 if frame is None:
                     break
 
-                result = self.pipeline.run(frame)
-
+                ctx = self.pipeline.run(frame)
+                result = PipelineResult(
+                    frame_id=ctx.frame_id,
+                    timestamp=ctx.timestamp,
+                    detections=ctx.detections,
+                    tracks=ctx.tracks,
+                    analytics=ctx.analytics,
+                    metadata=ctx.metadata
+                )
                 if self.viewer:
                     self.viewer.show(frame, result)
 

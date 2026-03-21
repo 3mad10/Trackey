@@ -5,8 +5,9 @@ from uuid import UUID
 from typing import Union, Optional, List
 
 from trackey.core.io.output.viewer.base import OutputViewer
+from trackey.core.scene.scene import Scene
 from trackey.data.schemas.frame import Frame
-from trackey.core.scene import Scene
+from trackey.data.schemas.pipeline import PipelineResult
 from trackey.data.schemas.track import Track
 from trackey.data.schemas.detection import Detection
 from trackey.data.schemas.view import GlobalStateBox, GlobalStateBoxPlacement
@@ -27,7 +28,7 @@ class OpenCVViewer(OutputViewer):
                  window_name: str = "Trackey",
                  wait_ms: int = 1,
                  scene: Scene = None,
-                 show_zones: bool = True,
+                 show_scene: bool = True,
                  show_lines: bool = True):
         """
         Args:
@@ -35,29 +36,29 @@ class OpenCVViewer(OutputViewer):
             wait_ms: Milliseconds to wait between frames
             show_zones: If True, draw analyzer zones/areas of effect
         """
-        if show_zones and not scene:
-            logger.error(f"[OpenCVViewer] zone should be viewed but scene is not passed as input")
-        if show_lines and not scene:
-            logger.error(f"[OpenCVViewer] line should be viewed but scene is not passed as input")
+        if show_scene and not scene:
+            logger.error(f"[OutputViewer][OpenCVViewer] scene shall be viewed but scene is not passed as input")
         self.window_name = window_name
         self.is_open = False
         self.scene = scene
-        self.show_zones = show_zones
-        self.show_lines = show_lines
+        self.show_scene = show_scene
+        self.static_layer = None
 
 
-    def show(self, frame: Optional[Frame], data: dict):
+    def show(self, frame: Optional[Frame], data: PipelineResult):
         if frame is None:
             return
 
-        img = frame.frame.copy()
+        base = frame.frame.copy()
+    
+        if self.static_layer is None and self.show_scene:
+            self._build_static_layer(frame)
 
-        detections = data.get("detections", [])
-        # print("dataaaaaaa : ")
-        # print(data["zones"])
-        if self.show_zones and self.scene:
-            self._draw_zones(img, self.scene.zones, frame.width, frame.height)
+        img = base
+        if self.static_layer is not None:
+            img = cv2.addWeighted(img,1,self.static_layer,1,0)
 
+        detections = data.detections
         for det in detections:
             # print("Detection : ", det)
             # print("class_name : ", det.class_name)
@@ -65,7 +66,7 @@ class OpenCVViewer(OutputViewer):
             for drawable in drawables:
                 drawable.draw(img)
 
-        tracks = data.get("tracks", [])
+        tracks = data.tracks
         for track in tracks:
             if not track.view_track or not track.detections:
                 continue
@@ -73,11 +74,34 @@ class OpenCVViewer(OutputViewer):
             for drawable in detection_to_drawables(det, frame):
                 drawable.draw(img)
 
-        analytics = data.get("analytics", {})
+        analytics = data.analytics
         # draw activities, counters, heatmaps, etc.
 
         self._render(img)
 
+    
+    def _build_static_layer(self, frame):
+
+        self.static_layer = np.zeros_like(frame.frame)
+        if not self.scene:
+            return
+        for zone in self.scene.zones.values():
+            PolygonDrawable(
+                points=zone.polygon.points,
+                frame_width=frame.width,
+                frame_height=frame.height,
+                color=zone.color,
+                filled=zone.filled,
+                alpha=zone.alpha,
+                label=zone.name
+            ).draw(self.static_layer)
+        for line in self.scene.lines.values():
+
+            LineDrawable(
+                line=line,
+                frame_width=frame.width,
+                frame_height=frame.height
+            ).draw(self.static_layer)
     def add_global_state_box(self, placement: GlobalStateBoxPlacement) -> UUID:
         pass
 

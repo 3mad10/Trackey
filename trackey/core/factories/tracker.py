@@ -1,9 +1,9 @@
 from trackey.core.registries.tracking import TRACKER_REGISTRY
 from trackey.core.interfaces.tracker import Tracker
-from trackey.core.scene import Scene
+from trackey.core.scene.scene import Scene
 
 
-def build_tracker(tracker_type: str, scene: Scene =None,  **kwargs) -> Tracker:
+def build_tracker(tracker_type: str,  **kwargs) -> Tracker:
     cls = TRACKER_REGISTRY.get(tracker_type)
     if cls is None:
         raise ValueError(
