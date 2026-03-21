@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, Callable, List, Any
 from collections import defaultdict
-from trackey.core.pipeline.nodes import PipelineNode
+from trackey.core.interfaces.node import PipelineNode
 
 
 logger = logging.getLogger(__name__)

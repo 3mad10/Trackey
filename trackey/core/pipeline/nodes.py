@@ -1,124 +1,118 @@
-from abc import ABC, abstractmethod
-from typing import Dict
+from typing import List
+from trackey.data.schemas.track import Track
+
+from trackey.core.context import FrameContext
+from trackey.core.interfaces.node import PipelineNode
+from trackey.core.context import FrameContext
+from trackey.core.interfaces.node import PipelineNode
+from trackey.core.scene.scene import Scene
+from trackey.core.scene.mappings import ZoneMemberships
 
 
-class PipelineNode(ABC):
-    @abstractmethod
-    def process(self, data: Dict) -> Dict:
-        """
-        Receives a data dictionary (frame, detections, tracks, features, etc.)
-        Returns updated data dictionary.
-        """
-        pass
+class ZoneFilterMixin:
+    def filter_tracks(self, ctx: FrameContext) -> List[Track]:
+        if self.zone_name:
+            track_ids = ctx.zone_memberships.by_zone.get(self.zone_name, [])
+            return [t for t in ctx.tracks if t.id in track_ids]
+        return ctx.tracks
 
 
 class DetectorNode(PipelineNode):
-    def __init__(self, detector):
+    def __init__(self, name: str,  detector):
         """
         detector: object with method detect(frame) -> list[Detection]
         """
+        super().__init__(name)
         self.detector = detector
 
-    def process(self, data: Dict) -> Dict:
-        frame = data.get("frame")
+    def process(self, ctx: FrameContext) -> FrameContext:
+        frame = ctx.frame
         if frame is None:
-            return data
+            return ctx
 
         detections = self.detector.detect(frame)
-        data["detections"] = detections
-        return data
+        ctx.detections = detections
+        return ctx
 
 
 class TrackerNode(PipelineNode):
-    def __init__(self, tracker):
+    def __init__(self, name: str,  tracker):
         """
         tracker: object with method update(frame, detections) -> list[Track]
         """
+        super().__init__(name)
         self.tracker = tracker
 
-    def process(self, data: Dict) -> Dict:
-        frame = data.get("frame")
-        detections = data.get("detections", [])
-        if not detections:
-            return data
+    def process(self, ctx: FrameContext) -> FrameContext:
+        frame = ctx.frame
+        detections = ctx.detections
         tracks = self.tracker.update(detections, frame)
-        data["tracks"] = tracks
-        return data
+        ctx.tracks = tracks
+        return ctx
 
 
-class AnalyzerNode(PipelineNode):
-    def __init__(self, analyzer, key: str):
+class AnalyzerNode(PipelineNode, ZoneFilterMixin):
+    def __init__(self, name: str, analyzer, **node_cfg):
         """
-        analyzer: object with method analyze(frame, tracks) -> any
-        key: name to store results in data['analytics']
+        analyzer: object with method analyze(tracks) -> list[Track]
         """
+        super().__init__(name)
         self.analyzer = analyzer
-        self.key = key
+        if 'zone' in node_cfg:
+            self.zone_name = node_cfg['zone']
+        else:
+            self.zone_name = None
 
-    def process(self, data: Dict) -> Dict:
-        frame = data.get("frame")
-        tracks = data.get("tracks", [])
-        if not tracks:
-            return data
+    def process(self, ctx: FrameContext) -> FrameContext:
 
-        result = self.analyzer.analyze(tracks, frame)
-        if "analytics" not in data:
-            data["analytics"] = {}
-        data["analytics"][self.key] = result
-        return data
+        tracks = self.filter_tracks(ctx)
+
+        ctx.analytics[self.name] = self.analyzer.analyze(tracks)
+
+        return ctx
 
 
-class ReIDNode(PipelineNode):
-    def __init__(self, reid_model):
+class ReIDNode(PipelineNode, ZoneFilterMixin):
+    def __init__(self, name: str,  reid_model):
         """
         reid_model: object with method assign_ids(tracks) -> list[Track]
         """
+        super().__init__(name)
         self.reid_model = reid_model
 
-    def process(self, data: Dict) -> Dict:
-        tracks = data.get("tracks", [])
-        if not tracks:
-            return data
+    def process(self, ctx: FrameContext) -> FrameContext:
+
+        tracks = self.filter_tracks(ctx)
 
         enriched_tracks = self.reid_model.assign_ids(tracks)
-        data["tracks"] = enriched_tracks
-        return data
+        ctx.tracks = enriched_tracks
+        return ctx
 
 
 class PostprocessorNode(PipelineNode):
-    def __init__(self, postprocessor):
+    def __init__(self, name: str,  postprocessor):
         """
         postprocessor: object with method process(tracks) -> list[Track]
         """
+        super().__init__(name)
         self.postprocessor = postprocessor
 
-    def process(self, data: Dict) -> Dict:
-        tracks = data.get("tracks", [])
-        if not tracks:
-            return data
+    def process(self, ctx: FrameContext) -> FrameContext:
+        tracks = ctx.tracks
 
         processed_tracks = self.postprocessor.process(tracks)
-        data["tracks"] = processed_tracks
-        return data
+        ctx.tracks = processed_tracks
+        return ctx
 
 
-class AnalyzerNode(PipelineNode):
-    def __init__(self, analyzer, key: str):
-        self.analyzer = analyzer
-        self.key = key
-    
-    def process(self, data: Dict) -> Dict:
-        frame = data.get("frame")
-        tracks = data.get("tracks", [])
-        
-        if not tracks:
-            return data
-        
-        result = self.analyzer.analyze(tracks, frame)
-        
-        # Store analytics result
-        if "analytics" not in data:
-            data["analytics"] = {}
-        data["analytics"][self.key] = result
-        
-        return data
+class SpatialIndexNode(PipelineNode):
+    def __init__(self, name: str, scene: Scene):
+        """
+        SpatialIndexNode: object with method FrameContext -> FrameContext
+        """
+        super().__init__(name)
+        self.scene = scene
+
+    def process(self, ctx: FrameContext) -> FrameContext:
+        ctx.zone_memberships = ZoneMemberships.build(ctx.tracks, self.scene)
+        return ctx

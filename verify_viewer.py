@@ -32,7 +32,7 @@ def test_viewer():
     # Test 2: Track with metadata
     print("Testing Track with metadata...")
     track = Track(
-        private_id=uuid4(),
+        tracker_id=uuid4(),
         confidence=0.8,
         metadata={"status": "tracked", "id": "123"}
     )

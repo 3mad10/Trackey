@@ -10,19 +10,25 @@ scene:
       color: [255,0,0]
 
 pipeline:
-  - name: detector
+  - name: detectorA
     component: detector
     type: yolo
     params:
       weights: yolov8n.pt
-  - name: tracker
+  - name: trackerA
     component: tracker
     type: deepsort
     params:
       max_age: 30
+  - name: spatial_analyzer
+    component: spatial_context
   - name: people_counter
     component: analyzer
     type: counter
+    zone: AreaA
     params:
-      object: person
-      zone: AreaA
+      target_classes:
+        - person
+      metrics:
+        - current
+        - cumulative

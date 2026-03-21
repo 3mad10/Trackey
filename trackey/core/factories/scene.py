@@ -1,7 +1,7 @@
 import yaml
 import logging
 from pathlib import Path
-from trackey.core.scene import Scene
+from trackey.core.scene.scene import Scene
 from trackey.data.schemas.geometry import Zone, Line, Polygon
 
 

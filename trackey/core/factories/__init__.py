@@ -7,6 +7,7 @@ from trackey.core.pipeline.nodes import (
     AnalyzerNode,
     PostprocessorNode,
     ReIDNode,
+    SpatialIndexNode,
 )
 
 FACTORY_ROUTER = {
@@ -17,12 +18,18 @@ FACTORY_ROUTER = {
 
 
 NODE_WRAPPERS = {
-    "detector": lambda component, cfg: DetectorNode(component),
-    "tracker": lambda component, cfg: TrackerNode(component),
-    "analyzer": lambda component, cfg: AnalyzerNode(
+    "detector": lambda name, component, cfg: DetectorNode(name, component),
+    "tracker": lambda name, component, cfg: TrackerNode(name, component),
+    "analyzer": lambda name, component, cfg: AnalyzerNode(
+        name=name,
         analyzer=component,
-        key=cfg["name"]
+        node_cfg=cfg
     ),
-    "postprocessor": lambda component, cfg: PostprocessorNode(component),
-    "reid": lambda component, cfg: ReIDNode(component),
+    "postprocessor": lambda name, component, cfg: PostprocessorNode(name, component),
+    "reid": lambda name, component, cfg: ReIDNode(name, component),
+
+}
+
+CONTROL_NODES = {
+    "spatial_context": lambda name, scene: SpatialIndexNode(name, scene),
 }

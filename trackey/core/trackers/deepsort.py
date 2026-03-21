@@ -60,7 +60,7 @@ class DeepSortTracker(Tracker):
                 t.last_seen = now
             else:
                 self.tracks[track_id] = Track(
-                    private_id=track_id,
+                    tracker_id=track_id,
                     detections=deque([det], maxlen=30),
                     confidence=1.0,
                 )

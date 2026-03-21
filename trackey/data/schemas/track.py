@@ -8,7 +8,7 @@ from trackey.data.schemas.detection import Detection
 
 class Track(BaseModel):
     id: UUID = Field(default_factory=uuid4)
-    private_id: Union[UUID, int]
+    tracker_id: Union[UUID, int]
     detections: deque[Detection] = Field(
         default_factory=lambda: deque(maxlen=30)
     )

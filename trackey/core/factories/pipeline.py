@@ -1,14 +1,16 @@
 import yaml
 import logging
 from pathlib import Path
-from trackey.core.factories import FACTORY_ROUTER, NODE_WRAPPERS
-from trackey.core.scene import Scene
+from trackey.core.factories import FACTORY_ROUTER, NODE_WRAPPERS, CONTROL_NODES
+from trackey.core.scene.scene import Scene
 
 logger = logging.getLogger(__name__)
 
 class PipelinBuilder:
+    CONTROL_NODES = ['condition', 'merge', 'spatial_context']
+    PROCESSING_NODES = ['detector', 'tracker', 'analyzer']
     def __init__(self, cfg_path: str, scene: Scene):
-        self.nodes = []  # list of tuples: (node_name, instance)
+        self.nodes = []
         self.cfg = self._load_yaml(cfg_path)
         self.scene = scene
 
@@ -50,32 +52,51 @@ class PipelinBuilder:
     def _build_node(self, node_cfg):
         node_name = node_cfg["name"]
 
-        if any(name == node_name for name, _ in self.nodes):
+        if any(node.name == node_name for node in self.nodes):
             logger.error(f"[PipelineBuilder] Duplicate node name detected: '{node_name}'")
             raise ValueError(f"[PipelineBuilder] Duplicate node name detected: '{node_name}'")
 
         component_name = node_cfg["component"]
-        node_type = node_cfg["type"]
         params = node_cfg.get("params") or {}
-
+        
         # Build raw component
-        component_factory = FACTORY_ROUTER.get(component_name)
-        if not component_factory:
-            raise ValueError(f"[PipelineBuilder] Unknown node component: {component_name} \
-                             Available components : f{FACTORY_ROUTER.keys()}")
+        if component_name in self.PROCESSING_NODES:
+            node_type = node_cfg["type"]
+            component_factory = FACTORY_ROUTER.get(component_name)
+            if not component_factory:
+                logger.error(f"[PipelineBuilder] Unknown node component: {component_name} \
+                                Available components : f{FACTORY_ROUTER.keys()}")
+                raise ValueError(f"[PipelineBuilder] Unknown node component: {component_name} \
+                                Available components : f{FACTORY_ROUTER.keys()}")
 
-        component = component_factory(node_type, scene=self.scene, **params)
+            component = component_factory(node_type, **params)
+        
+        # If Node is a processing node wrap processor in a node wrapper
+        if component_name in self.PROCESSING_NODES:
+            # Wrap into node
+            node_builder = NODE_WRAPPERS.get(component_name)
+            if not node_builder:
+                logger.error(f"[PipelineBuilder] No Node wrapper for component: {component_name}")
+                raise ValueError(f"[PipelineBuilder] No Node wrapper for component: {component_name}")
 
-        # Wrap into node
-        node_builder = NODE_WRAPPERS.get(component_name)
-        if not node_builder:
-            raise ValueError(f"[PipelineBuilder] No Node wrapper for component: {component_name}")
+            node = node_builder(node_name, component, node_cfg)
+        # Else Check if the node is a control node and pass error if it is not
+        else:
+            node_builder = CONTROL_NODES.get(component_name)
+            if not node_builder:
+                logger.error(f"[PipelineBuilder] Node {component_name} not supported, \
+                             Supported Compoenents are : {self.PROCESSING_NODES}, {self.CONTROL_NODES}")
+                raise ValueError(f"[PipelineBuilder] Node {component_name} not supported, \
+                             Supported Compoenents are : {self.PROCESSING_NODES}, {self.CONTROL_NODES}")
+            node = node_builder(node_name, self.scene)
 
-        node = node_builder(component, node_cfg)
-
-        self.nodes.append((node_name, node))
-        print(f"[PipelineBuilder] Built node: {node_name} ({component}/{node_type})")
-        logger.info(f"[PipelineBuilder] Built node: {node_name} ({component}/{node_type})")
+        self.nodes.append(node)
+        if component_name in self.PROCESSING_NODES:
+            print(f"[PipelineBuilder] Built node: {node_name} ({component_name}/{node_type})")
+            logger.info(f"[PipelineBuilder] Built node: {node_name} ({component_name}/{node_type})")
+        else:
+            print(f"[PipelineBuilder] Built node: {node_name} ({component_name})")
+            logger.info(f"[PipelineBuilder] Built node: {node_name} ({component_name})")
 
     def _remove_node_by_position(self, pipeline, position):
         if not isinstance(position, int):
