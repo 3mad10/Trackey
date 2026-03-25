@@ -13,14 +13,6 @@ class OutputViewer(ABC):
         pass
 
     @abstractmethod
-    def add_global_state_box(self, placement: GlobalStateBoxPlacement) -> UUID:
-        pass
-
-    @abstractmethod
-    def add_global_state(self, global_state_box: UUID, state_name: str, value: Union[int, float, str]):
-        pass
-
-    @abstractmethod
     def open(self) -> bool:
         pass
 

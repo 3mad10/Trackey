@@ -27,7 +27,7 @@ class YoloDetector(Detector):
         Returns:
         List[Detection]: List of Detection objects.
         """
-        results = self.model.predict(frame.frame)
+        results = self.model.predict(frame.frame, verbose=False)
         if not self.names:
             self.names = results[0].names
         detections = []

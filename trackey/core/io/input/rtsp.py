@@ -5,7 +5,7 @@ from trackey.core.io.input.base import InputSource
 from trackey.data.schemas.frame import Frame
 
 
-class VideoFileSource(InputSource):
+class RtspSource(InputSource):
     def __init__(self, url: str, **kwargs):
         super().__init__(**kwargs)
         self.url = url

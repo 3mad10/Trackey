@@ -30,7 +30,7 @@ class GlobalStateBox(BaseModel):
     h: float = Field(gt=0.0, le=1.0, description="Height (normalized)")
 
     @property
-    def center(self) -> Tuple[float]:
+    def center(self) -> Tuple[float, float]:
         return (self.cx, self.cy)
 
     @property

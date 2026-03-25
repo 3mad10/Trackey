@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
+from typing import List
 
 from trackey.core.context import FrameContext
-
+from trackey.core.interfaces.event import Subscriber
 
 class PipelineNode(ABC):
 
@@ -16,3 +17,13 @@ class PipelineNode(ABC):
         """
         pass
 
+
+class PublisherNode(ABC):
+    def __init__(self, subscribers:List[Subscriber]):
+        self.subscribers = subscribers
+
+    def add_subscriber(self, subscriber: Subscriber):
+        self.subscribers.append(subscriber)
+    
+    def remove_subscriber(self, subscriber: Subscriber):
+        self.subscribers.remove(subscriber)

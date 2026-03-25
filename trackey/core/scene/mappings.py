@@ -18,7 +18,7 @@ class ZoneMemberships:
         by_zone = defaultdict(list)
         
         for track in tracks:
-            position = track.detections[-1].bbox.center
+            position = track.bbox.center
             for zone_name, zone in scene.zones.items():
                 if zone.contains(position):
                     by_track[track.id].append(zone_name)
