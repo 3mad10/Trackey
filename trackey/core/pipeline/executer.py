@@ -1,8 +1,10 @@
 import time
+import logging
 
 from trackey.core.interfaces.node import PipelineNode
 from trackey.core.context import FrameContext
 
+logger = logging.getLogger(__name__)
 
 class PipelineExecutor:
     def __init__(self, nodes: list[PipelineNode]):
@@ -18,4 +20,6 @@ class PipelineExecutor:
             ctx.metadata[node.name] = {
                 "time_ms": (time.time()-start)*1000
             }
+            # print(f"Execution time for {node.name} = {ctx.metadata[node.name]['time_ms']}")
+            # logger.info(f"Execution time for {node.name} = {ctx.metadata[node.name]['time_ms']}")
         return ctx

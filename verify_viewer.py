@@ -36,7 +36,7 @@ def test_viewer():
         confidence=0.8,
         metadata={"status": "tracked", "id": "123"}
     )
-    track.detections.append(det)
+    track.history.append(det)
     viewer.show(frame, [track])
 
     # Test 3: Mixed list

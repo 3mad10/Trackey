@@ -5,7 +5,7 @@ from collections import deque
 
 from trackey.core.interfaces.tracker import Tracker
 from trackey.data.schemas.track import Track
-from trackey.data.schemas.detection import Detection
+from trackey.data.schemas.detection import Detection, BoundingBox
 from trackey.data.schemas.frame import Frame
 from trackey.core.register import register_tracker
 
@@ -20,23 +20,36 @@ class DeepSortTracker(Tracker):
         except ModuleNotFoundError as e:
             logger.error(f"[DeepSortTracker] Run \'pip install deep-sort-realtime\' to run DeepSort tracker")
             raise e
-        self.tracker = DeepSort(**kwargs)
+        self.tracker = DeepSort(nn_budget=25,**kwargs)
         self.tracks: dict[int, Track] = {}
 
     def update(self, detections: List[Detection], frame: Optional[Frame]) -> List[Track]:
         if frame is None:
-            raise Exception("Frame required")
+            raise Exception("[Tracker][DeepSortTracker] Frame required")
+        
+        now = datetime.now(timezone.utc)
+        # Create list of bbox in original frame width and height
+        ds_inputs = []
+        others = []
 
-        ds_inputs = [
-            (list(d.bbox.to_pixel_xywh(frame.width, frame.height)),
-            d.confidence, d.class_id)
-            for d in detections if d.bbox
-        ]
+        for det in detections:
 
-        ds_tracks = self.tracker.update_tracks(ds_inputs, frame=frame.frame)
+            if det.bbox is None:
+                continue
+
+            ds_inputs.append((
+                list(det.bbox.to_pixel_xywh(
+                    frame.width,
+                    frame.height
+                )),
+                det.confidence,
+                det.class_id
+            ))
+            others.append(det.class_name)
+
+        ds_tracks = self.tracker.update_tracks(ds_inputs, frame=frame.frame, others=others)
 
         alive_ids = set()
-        now = datetime.now(timezone.utc)
 
         for ds_track in ds_tracks:
             if not ds_track.is_confirmed():
@@ -44,26 +57,46 @@ class DeepSortTracker(Tracker):
 
             track_id = ds_track.track_id
             alive_ids.add(track_id)
+            
+            l, t, bw, bh = ds_track.to_ltwh()
 
-            det = self._attach_detection(
-                ds_track.to_ltrb(),
-                detections,
-                frame,
-            )
+            cx = (l + bw/2) / frame.width
+            cy = (t + bh/2) / frame.height
+            w = bw / frame.width
+            h = bh / frame.height
 
-            if det is None:
-                continue
+            cx = self.clamp(cx)
+            cy = self.clamp(cy)
+            w = self.clamp(w)
+            h = self.clamp(h)
 
-            if track_id in self.tracks:
-                t = self.tracks[track_id]
-                t.detections.append(det)
-                t.last_seen = now
-            else:
+            bbox = BoundingBox(cx=cx, cy=cy, w=w, h=h)
+            # print("=============")
+            # print("det : ", det)
+            if track_id not in self.tracks:
                 self.tracks[track_id] = Track(
                     tracker_id=track_id,
-                    detections=deque([det], maxlen=30),
-                    confidence=1.0,
+                    bbox=bbox,
+                    confidence=det.confidence if det else 0,
+                    last_seen=now,
+                    class_name=ds_track.others[0],
+                    age=1
                 )
+            else:
+                t = self.tracks[track_id]
+
+                t.bbox = bbox
+
+                if det:
+                    t.confidence = det.confidence
+                    t.hits += 1
+                    t.time_since_update = 0
+                else:
+                    t.time_since_update += 1
+
+                t.age += 1
+                t.last_seen = now
+                t.history.append(det)
 
         # REMOVE DEAD TRACKS
         for tid in list(self.tracks.keys()):
@@ -75,81 +108,9 @@ class DeepSortTracker(Tracker):
 
     def get_tracks(self) -> List[Track]:
         return list(self.tracks.values())
-
-    def _get_existing_id(self, track_id):
-        if track_id in self.tracks:
-            return self.tracks[track_id]
-        return None
-
-    def _attach_detection(
-            self,
-            track_ltrb,
-            detections: list[Detection],
-            frame: Frame,
-            iou_thresh=0.7,
-            ) -> Detection | None:
-
-        best_det = None
-        best_iou = 0.0
-
-        for det in detections:
-            if det.bbox is None:
-                continue
-
-            det_ltrb = det.bbox.to_pixel_xyxy(frame.width, frame.height)
-            iou = self._iou_ltrb(track_ltrb, det_ltrb)
-
-            if iou > best_iou:
-                best_iou = iou
-                best_det = det
-
-        if best_iou < iou_thresh:
-            return None
-
-        return best_det
-
-    def _iou_ltrb(
-            self,
-            box_a: Tuple[float, float, float, float],
-            box_b: Tuple[float, float, float, float],
-            ) -> float:
-        """
-        Compute Intersection-over-Union (IoU) between two LTRB boxes.
-
-        Parameters
-        ----------
-        box_a : (l, t, r, b)
-        box_b : (l, t, r, b)
-
-        Returns
-        -------
-        float
-            IoU value in [0, 1]
-        """
-
-        ax1, ay1, ax2, ay2 = box_a
-        bx1, by1, bx2, by2 = box_b
-
-        # Intersection box
-        ix1 = max(ax1, bx1)
-        iy1 = max(ay1, by1)
-        ix2 = min(ax2, bx2)
-        iy2 = min(ay2, by2)
-
-        iw = max(0.0, ix2 - ix1)
-        ih = max(0.0, iy2 - iy1)
-        inter_area = iw * ih
-
-        # Areas
-        area_a = max(0.0, ax2 - ax1) * max(0.0, ay2 - ay1)
-        area_b = max(0.0, bx2 - bx1) * max(0.0, by2 - by1)
-
-        union_area = area_a + area_b - inter_area
-
-        if union_area <= 0.0:
-            return 0.0
-
-        return inter_area / union_area
+    
+    def clamp(self, v):
+        return max(1e-6, min(1.0, float(v)))
 
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 import cv2
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from trackey.data.schemas.detection import Detection
 from trackey.data.schemas.frame import Frame
 from trackey.data.schemas.track import Track
@@ -51,11 +51,11 @@ class PolygonDrawable(Drawable):
                  points: List[Tuple[float, float]],
                  frame_width: int,
                  frame_height: int,
-                 color: Tuple[int, int, int] = (255, 0, 0),
-                 thickness: int = 2,
-                 filled: bool = False,
-                 alpha: float = 0.3,
-                 label: str = None):
+                 color: Optional[Tuple[int, int, int]] = (255, 0, 0),
+                 thickness: Optional[int] = 2,
+                 filled: Optional[bool] = False,
+                 alpha: Optional[float] = 0.3,
+                 label: Optional[str] = None):
         """
         Args:
             points: List of (x, y) in normalized coords (0-1)
@@ -122,9 +122,9 @@ class LineDrawable(Drawable):
                  end: Tuple[float, float],    # Normalized
                  frame_width: int,
                  frame_height: int,
-                 color: Tuple[int, int, int] = (255, 0, 0),  # Blue
-                 thickness: int = 3,
-                 label: str = None):
+                 color: Optional[Tuple[int, int, int]] = (255, 0, 0),  # Blue
+                 thickness: Optional[int] = 3,
+                 label: Optional[str] = None):
         """
         Args:
             start: Start point (x, y) normalized
@@ -191,8 +191,8 @@ class TextDrawable(Drawable):
         )
 
 
-def get_metadata_drawables(metadata: dict, bbox_xyxy: tuple[int, int, int, int]) -> list[Drawable]:
-    drawables = []
+def get_metadata_drawables(metadata: dict, bbox_xyxy: tuple[int, int, int, int]) -> List[Drawable]:
+    drawables:List[Drawable] = []
     if not metadata:
         return drawables
 
@@ -218,63 +218,52 @@ def detection_to_drawables(det: Detection, frame: Frame):
 
         if det.class_name:
             drawables.extend(get_metadata_drawables({"Class: ": det.class_name}, bbox))
-        if det.metadata:
-            drawables.extend(get_metadata_drawables(det.metadata, bbox))
-
-    if det.points:
-        drawables.append(PointDrawable(det.points))
-
-    if det.keypoints:
-        keypoints = det.keypoints.to_pixel_xy(frame.width, frame.height)
-        bbox = det.keypoints.as_bbox().to_pixel_xyxy(frame.width, frame.height)
-        drawables.append(KeypointsDrawable(keypoints))
-        drawables.append(BBoxDrawable(bbox))
 
     return drawables
 
 
-def track_to_drawables(track: Track, frame: Frame):
-    if not track.detections:
-        return []
+# def track_to_drawables(track: Track, frame: Frame):
+#     if not track.history:
+#         return []
 
-    det = track.detections[-1]
-    # Use existing detection logic
-    drawables = detection_to_drawables(det, frame)
+#     det = track.history[-1]
+
+#     drawables = detection_to_drawables(det, frame)
     
-    # Add track-specific metadata if available
-    # We need the bbox to position the text, so we check if we have one from the detection
-    if det.bbox and track.metadata:
-        bbox = det.bbox.to_pixel_xyxy(frame.width, frame.height)
-        # Shift track metadata further up if detection metadata exists
-        # This is a simple implementation, might overlap if detection emits a lot of text
-        # But for now it's okay.
-        # Ideally we pass current text_y or similar.
+#     # Add track-specific metadata if available
+#     # We need the bbox to position the text, so we check if we have one from the detection
+#     if det.bbox and track.metadata:
+#         bbox = det.bbox.to_pixel_xyxy(frame.width, frame.height)
+#         # Shift track metadata further up if detection metadata exists
+#         # This is a simple implementation, might overlap if detection emits a lot of text
+#         # But for now it's okay.
+#         # Ideally we pass current text_y or similar.
         
-        # Let's count existing TextDrawables to guess offset? 
-        # Or just draw above.
+#         # Let's count existing TextDrawables to guess offset? 
+#         # Or just draw above.
         
-        # A simpler way: merge metadata? No, they might collide keys.
-        # Let's just generate drawables and append.
+#         # A simpler way: merge metadata? No, they might collide keys.
+#         # Let's just generate drawables and append.
         
-        # Heuristic: detection metadata usually draws immediately above bbox.
-        # Let's draw track metadata even higher?
-        # Or let's make get_metadata_drawables take a start_y offset?
+#         # Heuristic: detection metadata usually draws immediately above bbox.
+#         # Let's draw track metadata even higher?
+#         # Or let's make get_metadata_drawables take a start_y offset?
         
-        # For this iteration, let's just use get_metadata_drawables.
-        # Note: if both exist, they will overlap unless we adjust.
-        # Let's perform a small adjustment.
+#         # For this iteration, let's just use get_metadata_drawables.
+#         # Note: if both exist, they will overlap unless we adjust.
+#         # Let's perform a small adjustment.
         
-        offset_y = 0
-        if det.metadata:
-            offset_y = len(det.metadata) * 15
+#         offset_y = 0
+#         if det.metadata:
+#             offset_y = len(det.metadata) * 15
             
-        x1, y1, _, _ = bbox
-        initial_text_y = y1 - 10 - offset_y
+#         x1, y1, _, _ = bbox
+#         initial_text_y = y1 - 10 - offset_y
         
-        for key, value in track.metadata.items():
-            text = f"{key}: {value}"
-            drawables.append(TextDrawable(text, (x1, initial_text_y)))
-            initial_text_y -= 15
+#         for key, value in track.metadata.items():
+#             text = f"{key}: {value}"
+#             drawables.append(TextDrawable(text, (x1, initial_text_y)))
+#             initial_text_y -= 15
 
-    return drawables
+#     return drawables
 

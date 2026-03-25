@@ -29,6 +29,7 @@ pipeline:
     params:
       target_classes:
         - person
+        - car
       metrics:
         - current
         - cumulative

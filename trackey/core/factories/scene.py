@@ -8,15 +8,14 @@ from trackey.data.schemas.geometry import Zone, Line, Polygon
 logger = logging.getLogger(__name__)
 
 class SceneBuilder:
-    def __init__(self, cfg_path: str):
-        self.scene = {}
+    def __init__(self, cfg_path: Path):
         self.cfg = self._load_yaml(cfg_path)
 
     def build(self):
-        self._build_scene()
-        return self.scene
+        scene = self._build_scene()
+        return scene
 
-    def _load_yaml(self, cfg_path: str):
+    def _load_yaml(self, cfg_path: Path):
         cfg_path = Path(cfg_path)
 
         if not cfg_path.exists():
@@ -50,7 +49,7 @@ class SceneBuilder:
         if "lines" in scene:
             for line_cfg in scene["lines"]:
                 lines.append(self._build_line(line_cfg))
-        self.scene = Scene(zones=zones, lines=lines)
+        return Scene(zones=zones, lines=lines)
         
     def _build_zone(self, zone_cfg):
         if "name" not in zone_cfg:

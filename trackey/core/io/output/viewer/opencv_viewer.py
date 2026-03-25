@@ -16,8 +16,7 @@ from trackey.core.io.output.viewer.drawable import (
     PointDrawable, 
     PolygonDrawable,
     LineDrawable,
-    detection_to_drawables, 
-    track_to_drawables
+    detection_to_drawables
 )
 
 
@@ -26,14 +25,12 @@ logger = logging.getLogger(__name__)
 class OpenCVViewer(OutputViewer):
     def __init__(self,
                  window_name: str = "Trackey",
-                 wait_ms: int = 1,
-                 scene: Scene = None,
-                 show_scene: bool = True,
-                 show_lines: bool = True):
+                 scene: Optional[Scene] = None,
+                 show_scene: Optional[bool] = True,
+                 show_lines: Optional[bool] = True):
         """
         Args:
             window_name: OpenCV window name
-            wait_ms: Milliseconds to wait between frames
             show_zones: If True, draw analyzer zones/areas of effect
         """
         if show_scene and not scene:
@@ -49,7 +46,7 @@ class OpenCVViewer(OutputViewer):
         if frame is None:
             return
 
-        base = frame.frame.copy()
+        base = frame.frame
     
         if self.static_layer is None and self.show_scene:
             self._build_static_layer(frame)
@@ -68,9 +65,9 @@ class OpenCVViewer(OutputViewer):
 
         tracks = data.tracks
         for track in tracks:
-            if not track.view_track or not track.detections:
+            if not track.view_track or not track.history:
                 continue
-            det = track.detections[-1]
+            det = track.history[-1]
             for drawable in detection_to_drawables(det, frame):
                 drawable.draw(img)
 
@@ -102,11 +99,6 @@ class OpenCVViewer(OutputViewer):
                 frame_width=frame.width,
                 frame_height=frame.height
             ).draw(self.static_layer)
-    def add_global_state_box(self, placement: GlobalStateBoxPlacement) -> UUID:
-        pass
-
-    def add_global_state(self, global_state_box: UUID, state_name: str, value: Union[int, float, str]):
-        pass
 
     def open(self) -> bool:
         cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)

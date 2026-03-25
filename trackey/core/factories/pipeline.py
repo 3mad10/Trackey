@@ -203,7 +203,7 @@ class PipelinBuilder:
 if __name__ == '__main__':
     # Example: ensure detector/tracker classes are imported to register
     from trackey.core.detectors.yolo import YoloDetector
-    from trackey.core.detectors.mediapipe import MPLandmarkDetector
+    from trackey.core.features.mediapipe import MPLandmarkDetector
     from trackey.core.trackers.deepsort import DeepSortTracker
 
     builder = PipelinBuilder('../base_pipeline.yaml')
