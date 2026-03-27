@@ -25,7 +25,6 @@ logger = logging.getLogger(__name__)
 class OpenCVViewer(OutputViewer):
     def __init__(self,
                  window_name: str = "Trackey",
-                 scene: Optional[Scene] = None,
                  show_scene: Optional[bool] = True,
                  show_lines: Optional[bool] = True):
         """
@@ -33,11 +32,8 @@ class OpenCVViewer(OutputViewer):
             window_name: OpenCV window name
             show_zones: If True, draw analyzer zones/areas of effect
         """
-        if show_scene and not scene:
-            logger.error(f"[OutputViewer][OpenCVViewer] scene shall be viewed but scene is not passed as input")
         self.window_name = window_name
         self.is_open = False
-        self.scene = scene
         self.show_scene = show_scene
         self.static_layer = None
 
@@ -47,11 +43,9 @@ class OpenCVViewer(OutputViewer):
             return
 
         base = frame.frame
-    
-        if self.static_layer is None and self.show_scene:
-            self._build_static_layer(frame)
 
         img = base
+
         if self.static_layer is not None:
             img = cv2.addWeighted(img,1,self.static_layer,1,0)
 
@@ -75,30 +69,7 @@ class OpenCVViewer(OutputViewer):
         # draw activities, counters, heatmaps, etc.
 
         self._render(img)
-
-    
-    def _build_static_layer(self, frame):
-
-        self.static_layer = np.zeros_like(frame.frame)
-        if not self.scene:
-            return
-        for zone in self.scene.zones.values():
-            PolygonDrawable(
-                points=zone.polygon.points,
-                frame_width=frame.width,
-                frame_height=frame.height,
-                color=zone.color,
-                filled=zone.filled,
-                alpha=zone.alpha,
-                label=zone.name
-            ).draw(self.static_layer)
-        for line in self.scene.lines.values():
-
-            LineDrawable(
-                line=line,
-                frame_width=frame.width,
-                frame_height=frame.height
-            ).draw(self.static_layer)
+        
 
     def open(self) -> bool:
         cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
@@ -110,12 +81,34 @@ class OpenCVViewer(OutputViewer):
             cv2.destroyWindow(self.window_name)
         self.is_open = False
 
+    def build_scene(self, scene: Scene, frame: Frame):
+        self.static_layer = np.zeros_like(frame.frame)
+        if not scene:
+            return
+        for zone in scene.zones.values():
+            PolygonDrawable(
+                points=zone.polygon.points,
+                frame_width=frame.width,
+                frame_height=frame.height,
+                color=zone.color,
+                filled=zone.filled,
+                alpha=zone.alpha,
+                label=zone.name
+            ).draw(self.static_layer)
+        for line in scene.lines.values():
+            LineDrawable(
+                line=line,
+                frame_width=frame.width,
+                frame_height=frame.height
+            ).draw(self.static_layer)
 
     def _render(self, img):
             cv2.imshow(self.window_name, img)
             key = cv2.waitKey(1) & 0xFF
             if key in (ord("q"), 27):
                 raise KeyboardInterrupt
+    
+
 
 
     def _draw_zones(self, img: np.ndarray, zones, width: int, height: int):

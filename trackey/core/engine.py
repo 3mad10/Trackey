@@ -8,6 +8,8 @@ from trackey.core.pipeline import PipelineExecutor
 from trackey.core.factories.pipeline import PipelinBuilder
 from trackey.core.factories.scene import SceneBuilder
 from trackey.data.schemas.pipeline import PipelineResult
+from trackey.core.scene import Scene
+
 
 
 logging.basicConfig(
@@ -32,16 +34,28 @@ class Engine:
             self,
             source: InputSource,
             pipeline: PipelineExecutor,
-            viewer: Optional[OutputViewer]
+            viewer: Optional[OutputViewer],
+            scene: Optional[Scene] = None,
+            open_source_retries: Optional[int] = 10
             ):
         self.source = source
         self.pipeline = pipeline
+        self.scene = scene
         self.viewer = viewer if viewer else None
+        self.open_source_retries = open_source_retries
 
     def run(self):
         self.source.open()
         if self.viewer:
             self.viewer.open()
+        if self.scene:
+            for _ in range(self.open_source_retries):
+                frame = self.source.read()
+                if frame:
+                    break
+            if not frame:
+                raise Exception("[Engine] Can't Open Input Source.")
+            self.viewer.build_scene(self.scene, frame)
 
         try:
             while True:
@@ -86,5 +100,6 @@ if __name__ == '__main__':
     #                 viewer=OpenCVViewer(scene=scene))
     engine = Engine(source=VideoFileSource("/home/mohamed-emad/Downloads/IP Camera Demo traffic car.mp4"),
                     pipeline=pipeline,
-                    viewer=OpenCVViewer(scene=scene))
+                    viewer=OpenCVViewer(),
+                    scene=scene)
     engine.run()
