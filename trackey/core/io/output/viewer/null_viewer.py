@@ -21,19 +21,6 @@ class NullViewer(OutputViewer):
         # Intentionally do nothing
         pass
 
-    def add_global_state_box(
-        self,
-        placement: GlobalStateBoxPlacement
-    ) -> UUID:
-        return uuid4()
-
-    def add_global_state(
-        self,
-        global_state_box: UUID,
-        state_name: str,
-        value: int | float | str
-    ):
-        pass
 
     def close(self):
         pass
