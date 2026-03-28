@@ -55,13 +55,13 @@ class VideoFileSource(InputSource):
         Raises
         ------
         RuntimeError
-            Failed to open webcam
+            Failed to open video
         """
         if not self.is_open:
             raise RuntimeError("Video is not opened")
         ret, frame = self.cap.read()
         if not ret:
-            raise RuntimeError("Failed to read frame from webcam")
+            raise RuntimeError("Failed to read frame from video file")
         # Wrap in your Frame schema
         h, w = frame.shape[:2]
         return Frame(frame=frame, width=w, height=h)

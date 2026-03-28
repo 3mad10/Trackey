@@ -3,6 +3,7 @@ from typing import Optional
 
 from trackey.core.io.input import *
 from trackey.core.io.output.viewer import *
+from trackey.core.io.output.renderer import Renderer
 from trackey.core.interfaces import *
 from trackey.core.pipeline import PipelineExecutor
 from trackey.core.factories.pipeline import PipelinBuilder
@@ -35,6 +36,7 @@ class Engine:
             source: InputSource,
             pipeline: PipelineExecutor,
             viewer: Optional[OutputViewer],
+            renderer: Optional[Renderer],
             scene: Optional[Scene] = None,
             open_source_retries: Optional[int] = 10
             ):
@@ -43,6 +45,7 @@ class Engine:
         self.scene = scene
         self.viewer = viewer if viewer else None
         self.open_source_retries = open_source_retries
+        self.renderer = renderer
 
     def run(self):
         self.source.open()
@@ -65,13 +68,16 @@ class Engine:
 
                 ctx = self.pipeline.run(frame)
 
+                self.renderer.render(ctx)
+
                 result = PipelineResult(
                     frame_id=ctx.frame_id,
                     timestamp=ctx.timestamp,
                     detections=ctx.detections,
                     tracks=ctx.tracks,
                     analytics=ctx.analytics,
-                    metadata=ctx.metadata
+                    drawables=ctx.dynamic_drawables + ctx.ui_drawables,
+                    metadata=ctx.metadata,
                 )
                 if self.viewer:
                     self.viewer.show(frame, result)
@@ -97,9 +103,13 @@ if __name__ == '__main__':
     pipeline = PipelineExecutor(pipeline_builder.build())
     # engine = Engine(source=CameraSource(device_id=0),
     #                 pipeline=pipeline,
-    #                 viewer=OpenCVViewer(scene=scene))
+    #                 viewer=OpenCVViewer(),
+    #                 renderer=Renderer(),
+    #                 scene=scene
+    #                 )
     engine = Engine(source=VideoFileSource("/home/mohamed-emad/Downloads/IP Camera Demo traffic car.mp4"),
                     pipeline=pipeline,
                     viewer=OpenCVViewer(),
+                    renderer=Renderer(),
                     scene=scene)
     engine.run()

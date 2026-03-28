@@ -5,6 +5,7 @@ from trackey.core.scene.scene import Scene
 
 def build_tracker(tracker_type: str,  **kwargs) -> Tracker:
     cls = TRACKER_REGISTRY.get(tracker_type)
+    # TODO: add default uing pydantic
     if cls is None:
         raise ValueError(
             f"Unknown detector '{tracker_type}'. "

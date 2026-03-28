@@ -5,8 +5,8 @@ from typing import Tuple
 
 
 class BoundingBox(BaseModel):
-    cx: float = Field(ge=0.0, le=1.0)
     cy: float = Field(ge=0.0, le=1.0)
+    cx: float = Field(ge=0.0, le=1.0)
     w: float = Field(gt=0.0, le=1.0)
     h: float = Field(gt=0.0, le=1.0)
 

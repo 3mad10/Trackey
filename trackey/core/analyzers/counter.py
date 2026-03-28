@@ -51,7 +51,7 @@ class Counter(Analyzer):
         for track in tracks:
             if not track.history:
                 continue
-            track_class = track.history[-1].class_name.lower()
+            track_class = track.class_name.lower()
             if self.target_classes is None or track_class in self.target_classes:
                 current_counts[track_class] += 1
                 self.unique_tracks[track_class].add(track.tracker_id)
@@ -66,5 +66,4 @@ class Counter(Analyzer):
                 result[class_name]["peak"] = self.peak_counts[class_name]
             if "cumulative" in self.metrics:
                 result[class_name]["cumulative"] = len(self.unique_tracks[class_name])
-        print(result)
         return result

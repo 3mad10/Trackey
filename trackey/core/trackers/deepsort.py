@@ -20,21 +20,21 @@ class DeepSortTracker(Tracker):
         except ModuleNotFoundError as e:
             logger.error(f"[DeepSortTracker] Run \'pip install deep-sort-realtime\' to run DeepSort tracker")
             raise e
-        self.tracker = DeepSort(nn_budget=25,**kwargs)
-        self.tracks: dict[int, Track] = {}
+        self.tracker = DeepSort(**kwargs)
 
     def update(self, detections: List[Detection], frame: Optional[Frame]) -> List[Track]:
         if frame is None:
             raise Exception("[Tracker][DeepSortTracker] Frame required")
         
-        now = datetime.now(timezone.utc)
         # Create list of bbox in original frame width and height
         ds_inputs = []
-        others = []
 
         for det in detections:
 
             if det.bbox is None:
+                continue
+            
+            if det.confidence < 0.4:
                 continue
 
             ds_inputs.append((
@@ -43,27 +43,29 @@ class DeepSortTracker(Tracker):
                     frame.height
                 )),
                 det.confidence,
-                det.class_id
+                det.class_name
             ))
-            others.append(det.class_name)
 
-        ds_tracks = self.tracker.update_tracks(ds_inputs, frame=frame.frame, others=others)
+        ds_tracks = self.tracker.update_tracks(ds_inputs, frame=frame.frame)
 
-        alive_ids = set()
+        tracks = []
+
+        now = datetime.now(timezone.utc)
 
         for ds_track in ds_tracks:
+
             if not ds_track.is_confirmed():
                 continue
 
-            track_id = ds_track.track_id
-            alive_ids.add(track_id)
+            if ds_track.time_since_update > 0:
+                continue
             
-            l, t, bw, bh = ds_track.to_ltwh()
+            l, t, w, h = ds_track.to_ltwh()
 
-            cx = (l + bw/2) / frame.width
-            cy = (t + bh/2) / frame.height
-            w = bw / frame.width
-            h = bh / frame.height
+            cx = (l + w/2) / frame.width
+            cy = (t + h/2) / frame.height
+            w = w / frame.width
+            h = h / frame.height
 
             cx = self.clamp(cx)
             cy = self.clamp(cy)
@@ -73,38 +75,18 @@ class DeepSortTracker(Tracker):
             bbox = BoundingBox(cx=cx, cy=cy, w=w, h=h)
             # print("=============")
             # print("det : ", det)
-            if track_id not in self.tracks:
-                self.tracks[track_id] = Track(
-                    tracker_id=track_id,
+            tracks.append(
+                Track(
+                    id=ds_track.track_id,
                     bbox=bbox,
-                    confidence=det.confidence if det else 0,
-                    last_seen=now,
-                    class_name=ds_track.others[0],
-                    age=1
+                    confidence=ds_track.get_det_conf() or 1.0,
+                    class_name=ds_track.get_det_class(),
+                    age=ds_track.age,
+                    last_seen=now
                 )
-            else:
-                t = self.tracks[track_id]
+            )
 
-                t.bbox = bbox
-
-                if det:
-                    t.confidence = det.confidence
-                    t.hits += 1
-                    t.time_since_update = 0
-                else:
-                    t.time_since_update += 1
-
-                t.age += 1
-                t.last_seen = now
-                t.history.append(det)
-
-        # REMOVE DEAD TRACKS
-        for tid in list(self.tracks.keys()):
-            if tid not in alive_ids:
-                del self.tracks[tid]
-
-        return list(self.tracks.values())
-
+        return tracks
 
     def get_tracks(self) -> List[Track]:
         return list(self.tracks.values())
