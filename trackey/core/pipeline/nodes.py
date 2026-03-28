@@ -1,6 +1,6 @@
 from typing import List
-from trackey.data.schemas.track import Track
 
+from trackey.data.schemas.track import Track
 from trackey.core.context import FrameContext
 from trackey.core.interfaces.node import PipelineNode
 from trackey.core.context import FrameContext
@@ -48,6 +48,8 @@ class TrackerNode(PipelineNode):
         detections = ctx.detections
         tracks = self.tracker.update(detections, frame)
         ctx.tracks = tracks
+        # print("track")
+        # print(ctx.tracks)
         return ctx
 
 

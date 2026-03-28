@@ -48,22 +48,25 @@ class OpenCVViewer(OutputViewer):
 
         if self.static_layer is not None:
             img = cv2.addWeighted(img,1,self.static_layer,1,0)
+        
 
-        detections = data.detections
-        for det in detections:
-            # print("Detection : ", det)
-            # print("class_name : ", det.class_name)
-            drawables = detection_to_drawables(det, frame)
-            for drawable in drawables:
-                drawable.draw(img)
+        # for drawable in data.drawables:
+        #     drawable.draw(img)
+        # detections = data.detections
+        # for det in detections:
+        #     # print("Detection : ", det)
+        #     # print("class_name : ", det.class_name)
+        #     drawables = detection_to_drawables(det, frame)
+        #     for drawable in drawables:
+        #         drawable.draw(img)
 
-        tracks = data.tracks
-        for track in tracks:
-            if not track.view_track or not track.history:
-                continue
-            det = track.history[-1]
-            for drawable in detection_to_drawables(det, frame):
-                drawable.draw(img)
+        # tracks = data.tracks
+        # for track in tracks:
+        #     if not track.view_track or not track.history:
+        #         continue
+        #     det = track.history[-1]
+        #     for drawable in detection_to_drawables(det, frame):
+        #         drawable.draw(img)
 
         analytics = data.analytics
         # draw activities, counters, heatmaps, etc.
@@ -108,8 +111,6 @@ class OpenCVViewer(OutputViewer):
             if key in (ord("q"), 27):
                 raise KeyboardInterrupt
     
-
-
 
     def _draw_zones(self, img: np.ndarray, zones, width: int, height: int):
         """Draw analyzer zones/areas of effect"""

@@ -19,7 +19,11 @@ pipeline:
     component: tracker
     type: deepsort
     params:
-      max_age: 30
+      max_age: 4
+      n_init: 3
+      nms_max_overlap: 0.5
+      max_cosine_distance: 0.3
+      nn_budget: 100
   - name: spatial_analyzer
     component: spatial_context
   - name: people_counter
