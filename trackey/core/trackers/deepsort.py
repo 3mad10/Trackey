@@ -25,16 +25,23 @@ class DeepSortTracker(Tracker):
     def update(self, detections: List[Detection], frame: Optional[Frame]) -> List[Track]:
         if frame is None:
             raise Exception("[Tracker][DeepSortTracker] Frame required")
+
+        ds_inputs = self._get_tracker_inputs(detections, frame)
+
+        ds_tracks = self.tracker.update_tracks(ds_inputs, frame=frame.frame)
+
+        tracks = self._wrap_tracks(ds_tracks, frame)
+
+        return tracks
         
+    
+    def _get_tracker_inputs(self, detections: List[Detection], frame: Frame):
         # Create list of bbox in original frame width and height
         ds_inputs = []
 
         for det in detections:
 
-            if det.bbox is None:
-                continue
-            
-            if det.confidence < 0.4:
+            if self._skip_detection(det):
                 continue
 
             ds_inputs.append((
@@ -45,8 +52,9 @@ class DeepSortTracker(Tracker):
                 det.confidence,
                 det.class_name
             ))
-
-        ds_tracks = self.tracker.update_tracks(ds_inputs, frame=frame.frame)
+        return ds_inputs
+    
+    def _wrap_tracks(self, ds_tracks, frame: Frame):
 
         tracks = []
 
@@ -54,27 +62,11 @@ class DeepSortTracker(Tracker):
 
         for ds_track in ds_tracks:
 
-            if not ds_track.is_confirmed():
-                continue
-
-            if ds_track.time_since_update > 0:
+            if self._skip_track(ds_track):
                 continue
             
-            l, t, w, h = ds_track.to_ltwh()
+            bbox = self._get_bbox(ds_track, frame=frame)
 
-            cx = (l + w/2) / frame.width
-            cy = (t + h/2) / frame.height
-            w = w / frame.width
-            h = h / frame.height
-
-            cx = self.clamp(cx)
-            cy = self.clamp(cy)
-            w = self.clamp(w)
-            h = self.clamp(h)
-
-            bbox = BoundingBox(cx=cx, cy=cy, w=w, h=h)
-            # print("=============")
-            # print("det : ", det)
             tracks.append(
                 Track(
                     id=ds_track.track_id,
@@ -87,11 +79,30 @@ class DeepSortTracker(Tracker):
             )
 
         return tracks
-
-    def get_tracks(self) -> List[Track]:
-        return list(self.tracks.values())
     
-    def clamp(self, v):
+
+    def _skip_detection(self, detection: Detection):
+        if detection.bbox is None or detection.confidence < 0.4:
+            return True
+        else:
+            return False
+
+    def _skip_track(self, ds_track):
+        if not ds_track.is_confirmed() or ds_track.time_since_update > 0:
+            return True
+        else:
+            return False
+    
+    def _get_bbox(self, ds_track, frame: Frame):
+        l, t, w, h = ds_track.to_ltwh()
+
+        cx = self._clamp((l + w/2) / frame.width)
+        cy = self._clamp((t + h/2) / frame.height)
+        w = self._clamp(w / frame.width)
+        h = self._clamp(h / frame.height)
+        return BoundingBox(cx=cx, cy=cy, w=w, h=h)
+
+    def _clamp(self, v):
         return max(1e-6, min(1.0, float(v)))
 
 

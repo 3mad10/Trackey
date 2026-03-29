@@ -12,6 +12,3 @@ class Tracker(ABC):
                frame: Optional[Frame] = None) -> List[Track]:
         pass
 
-    @abstractmethod
-    def get_tracks(self) -> List[Track]:
-        pass
