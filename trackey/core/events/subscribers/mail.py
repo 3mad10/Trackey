@@ -3,8 +3,8 @@ import smtplib
 from email.message import EmailMessage
 from email.headerregistry import Address
 
-from trackey.core.interfaces.event import Subscriber
-from trackey.core.events.count import CountExceededEvent
+from trackey.core.interfaces.subscriber import Subscriber
+from trackey.core.events.types import CountExceededEvent
 from trackey.data.schemas.event import Event
 
 

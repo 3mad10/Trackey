@@ -2,22 +2,22 @@ scene:
   zones:
     - name: AreaA
       polygon:
-        - [0.0,0.5] # top left
-        - [1.0,0.5] # top right
-        - [1.0,1.0] # buttom right
-        - [0.0,1.0] # buttom left
+        - [0.7,0.3] # zone top left
+        - [1.0,0.3] # zone top right
+        - [1.0,1.0] # zone buttom right
+        - [0.7,1.0] # zone buttom left
 
       color: [255,0,0]
 
 pipeline:
   - name: detectorA
-    component: detector
-    type: yolo
+    type: detector
+    processor: yolo
     params:
       weights: yolov8n.pt
   - name: trackerA
-    component: tracker
-    type: deepsort
+    type: tracker
+    processor: deepsort
     params:
       max_age: 4
       n_init: 3
@@ -25,10 +25,10 @@ pipeline:
       max_cosine_distance: 0.3
       nn_budget: 100
   - name: spatial_analyzer
-    component: spatial_context
+    type: spatial_context
   - name: people_counter
-    component: analyzer
-    type: counter
+    type: analyzer
+    processor: counter
     zone: AreaA
     params:
       target_classes:

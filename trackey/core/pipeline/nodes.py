@@ -18,12 +18,12 @@ class ZoneFilterMixin:
 
 
 class DetectorNode(PipelineNode):
-    def __init__(self, name: str,  detector):
+    def __init__(self, name: str,  component, **node_cfg):
         """
         detector: object with method detect(frame) -> list[Detection]
         """
         super().__init__(name)
-        self.detector = detector
+        self.detector = component
 
     def process(self, ctx: FrameContext) -> FrameContext:
         frame = ctx.frame
@@ -36,12 +36,12 @@ class DetectorNode(PipelineNode):
 
 
 class TrackerNode(PipelineNode):
-    def __init__(self, name: str,  tracker):
+    def __init__(self, name: str,  component, **node_cfg):
         """
         tracker: object with method update(frame, detections) -> list[Track]
         """
         super().__init__(name)
-        self.tracker = tracker
+        self.tracker = component
 
     def process(self, ctx: FrameContext) -> FrameContext:
         frame = ctx.frame
@@ -54,12 +54,14 @@ class TrackerNode(PipelineNode):
 
 
 class AnalyzerNode(PipelineNode, ZoneFilterMixin):
-    def __init__(self, name: str, analyzer, **node_cfg):
+    def __init__(self, name: str, component, **node_cfg):
         """
         analyzer: object with method analyze(tracks) -> list[Track]
         """
         super().__init__(name)
-        self.analyzer = analyzer
+        self.analyzer = component
+        print("node_cfg")
+        print(node_cfg)
         if 'zone' in node_cfg:
             self.zone_name = node_cfg['zone']
         else:
@@ -108,7 +110,7 @@ class PostprocessorNode(PipelineNode):
 
 
 class SpatialIndexNode(PipelineNode):
-    def __init__(self, name: str, scene: Scene):
+    def __init__(self, name: str, scene, **node_cfg):
         """
         SpatialIndexNode: object with method FrameContext -> FrameContext
         """

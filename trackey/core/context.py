@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Set
 from dataclasses import dataclass, field
 from trackey.data.schemas.frame import Frame
 from trackey.data.schemas.detection import Detection
@@ -16,6 +16,5 @@ class FrameContext:
     tracks: List[Track] = field(default_factory=list)
     zone_memberships: ZoneMemberships = field(default_factory=ZoneMemberships)
     analytics: Dict[str, Any] = field(default_factory=dict)
-    dynamic_drawables: List[Drawable] = field(default_factory=list)
-    ui_drawables: List[Drawable] = field(default_factory=list)
+    triggered_conditions: Set[str] = field(default_factory=set)
     metadata: Dict[str, Any] = field(default_factory=dict)
