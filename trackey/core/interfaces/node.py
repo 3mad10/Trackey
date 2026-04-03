@@ -2,10 +2,11 @@ from abc import ABC, abstractmethod
 from typing import List
 
 from trackey.core.context import FrameContext
-from trackey.core.interfaces.event import Subscriber
+from trackey.core.interfaces.subscriber import Subscriber
 
 class PipelineNode(ABC):
 
+    @abstractmethod
     def __init__(self, name: str):
         self.name = name
     
@@ -18,8 +19,9 @@ class PipelineNode(ABC):
         pass
 
 
-class PublisherNode(ABC):
-    def __init__(self, subscribers:List[Subscriber]):
+class PublisherNode(PipelineNode):
+    def __init__(self, name: str, subscribers:List[Subscriber]):
+        super().__init__(name=name)
         self.subscribers = subscribers
 
     def add_subscriber(self, subscriber: Subscriber):

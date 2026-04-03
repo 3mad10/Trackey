@@ -47,14 +47,17 @@ class Counter(Analyzer):
     ) -> Dict[str, Any]:
 
         current_counts = defaultdict(int)
-
+        # print("tracks : ", tracks)
         for track in tracks:
             if not track.history:
                 continue
             track_class = track.class_name.lower()
+            print(track_class)
+            print(self.target_classes)
             if self.target_classes is None or track_class in self.target_classes:
                 current_counts[track_class] += 1
-                self.unique_tracks[track_class].add(track.tracker_id)
+                self.unique_tracks[track_class].add(track.id)
+                print(current_counts)
 
         result = {}
         for class_name, count in current_counts.items():

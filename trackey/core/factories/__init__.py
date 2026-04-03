@@ -18,18 +18,18 @@ FACTORY_ROUTER = {
 
 
 NODE_WRAPPERS = {
-    "detector": lambda name, component, cfg: DetectorNode(name, component),
-    "tracker": lambda name, component, cfg: TrackerNode(name, component),
-    "analyzer": lambda name, component, cfg: AnalyzerNode(
-        name=name,
-        analyzer=component,
-        node_cfg=cfg
+    "detector": lambda node_name, component, cfg: DetectorNode(node_name, component),
+    "tracker": lambda node_name, component, cfg: TrackerNode(node_name, component),
+    "analyzer": lambda node_name, component, cfg: AnalyzerNode(
+        node_name,
+        component,
+        **cfg
     ),
-    "postprocessor": lambda name, component, cfg: PostprocessorNode(name, component),
-    "reid": lambda name, component, cfg: ReIDNode(name, component),
+    "postprocessor": lambda node_name, component, cfg: PostprocessorNode(node_name, component),
+    "reid": lambda node_name, component, cfg: ReIDNode(node_name, component),
 
 }
 
 CONTROL_NODES = {
-    "spatial_context": lambda name, scene: SpatialIndexNode(name, scene),
+    "spatial_context": lambda node_name, scene: SpatialIndexNode(node_name, scene),
 }

@@ -76,7 +76,6 @@ class Engine:
                     detections=ctx.detections,
                     tracks=ctx.tracks,
                     analytics=ctx.analytics,
-                    drawables=ctx.dynamic_drawables + ctx.ui_drawables,
                     metadata=ctx.metadata,
                 )
                 if self.viewer:

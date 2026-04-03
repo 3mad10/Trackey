@@ -1,6 +1,10 @@
 import logging
-from typing import Dict, Callable, List, Any
+from typing import Any
+
 from trackey.core.interfaces.node import PipelineNode
+from trackey.core.logic.path import PathExtractor
+from trackey.core.context import FrameContext
+
 
 logger = logging.getLogger(__name__)
 
@@ -16,17 +20,35 @@ class ConditionalNode(PipelineNode):
             Skip
     """
     def __init__(self,
-                 condition:Callable[[Dict], bool],
-                 true_nodes:List[PipelineNode],
-                 false_nodes:List[PipelineNode]):
-        self.true_nodes = true_nodes or []
-        self.false_nodes = false_nodes or []
-        self.condition = condition
-    def process(self, data: Dict) -> Dict:
-        if self.condition(data):
-            for node in self.true_nodes:
-                data = node.process(data)
-        else:
-            for node in self.false_nodes:
-                data = node.process(data)
-        return data
+                 name: str,
+                 path: str,
+                 operator: str,
+                 value: Any,
+                 event_name: str):
+        super().__init__(name)
+        self.extractor = PathExtractor(path)
+        self.operator = operator
+        self.threshold = value
+        self.event_name = event_name
+
+    def process(self, ctx: FrameContext) -> FrameContext:
+        extracted = self.extractor.extract(ctx)
+        if extracted is None:
+            return ctx
+        if self._evaluate(extracted):
+            ctx.triggered_conditions.add(self.event_name)
+        return ctx
+    
+    def _evaluate(self, value: Any) -> bool:
+        ops = {
+            "gt": lambda a, b: a > b,
+            "lt": lambda a, b: a < b,
+            "eq": lambda a, b: a == b,
+            "gte": lambda a, b: a >= b,
+            "lte": lambda a, b: a <= b,
+        }
+        op = ops.get(self.operator)
+        if not op:
+            logger.error(f"[ConditionalNode][{self.name}] Unknown operator: {self.operator}")
+            return False
+        return op(value, self.threshold)
