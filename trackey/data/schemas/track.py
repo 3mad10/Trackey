@@ -1,10 +1,8 @@
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
-from uuid import UUID, uuid4
+from uuid import UUID
 from typing import List, Union, Tuple, Optional
 from collections import deque
-from typing import ClassVar
-import itertools
 from trackey.data.schemas.detection import BoundingBox
 
 

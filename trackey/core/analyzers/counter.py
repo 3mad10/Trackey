@@ -49,15 +49,16 @@ class Counter(Analyzer):
         current_counts = defaultdict(int)
         # print("tracks : ", tracks)
         for track in tracks:
+            # print(track)
             if not track.history:
                 continue
             track_class = track.class_name.lower()
-            print(track_class)
-            print(self.target_classes)
+            # print(track_class)
+            # print(self.target_classes)
             if self.target_classes is None or track_class in self.target_classes:
                 current_counts[track_class] += 1
                 self.unique_tracks[track_class].add(track.id)
-                print(current_counts)
+        
 
         result = {}
         for class_name, count in current_counts.items():
@@ -69,4 +70,5 @@ class Counter(Analyzer):
                 result[class_name]["peak"] = self.peak_counts[class_name]
             if "cumulative" in self.metrics:
                 result[class_name]["cumulative"] = len(self.unique_tracks[class_name])
+        print(self.unique_tracks)
         return result

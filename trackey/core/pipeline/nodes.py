@@ -60,8 +60,6 @@ class AnalyzerNode(PipelineNode, ZoneFilterMixin):
         """
         super().__init__(name)
         self.analyzer = component
-        print("node_cfg")
-        print(node_cfg)
         if 'zone' in node_cfg:
             self.zone_name = node_cfg['zone']
         else:
