@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from typing import Tuple
+
 from trackey.data.schemas.frame import Frame
 
 
@@ -23,4 +25,9 @@ class InputSource(ABC):
 
     @abstractmethod
     def release(self):
+        pass
+
+    @property
+    @abstractmethod
+    def camera_id(self) -> str:
         pass

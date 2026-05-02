@@ -1,14 +1,11 @@
 import numpy as np
-from pydantic import BaseModel, field_validator
-from trackey.data.schemas.geometry import Zone
+from typing import Tuple
+from dataclasses import dataclass
 
 
-class Frame(BaseModel):
+@dataclass
+class Frame:
     frame: np.ndarray
-
-    model_config = {
-        "arbitrary_types_allowed": True
-    }
 
     @property
     def height(self) -> int:
@@ -18,16 +15,11 @@ class Frame(BaseModel):
     def width(self) -> int:
         return self.frame.shape[1]
 
-    def __getattr__(self, item):
-        return getattr(self.frame, item)
+    @property
+    def channels(self) -> int:
+        return self.frame.shape[2] if len(self.frame.shape) > 2 else 1
 
-    def __getitem__(self, key):
-        return self.frame[key]
-
-    @field_validator("frame")
-    def check_numpy(cls, v):
-        if not isinstance(v, np.ndarray):
-            raise TypeError("frame must be a numpy.ndarray")
-        return v
-
+    @property
+    def resolution(self) -> Tuple[int, int]:
+        return self.width, self.height
 

@@ -1,6 +1,13 @@
 from .detector import build_detector
 from .tracker import build_tracker
 from .analyzer import build_analyzer
+from .builder import Builder
+from .event_bus import EventBusBuilder
+from .pipeline import PipelineBuilder
+from .scene import SceneBuilder
+from .renderer import RendererBuilder
+from .sink import SinkBuilder
+from .source import SourceBuilder
 from trackey.core.pipeline.nodes import (
     DetectorNode,
     TrackerNode,
@@ -8,6 +15,7 @@ from trackey.core.pipeline.nodes import (
     PostprocessorNode,
     ReIDNode,
     SpatialIndexNode,
+    PublisherNode,
 )
 
 FACTORY_ROUTER = {
@@ -31,5 +39,15 @@ NODE_WRAPPERS = {
 }
 
 CONTROL_NODES = {
-    "spatial_context": lambda node_name, scene: SpatialIndexNode(node_name, scene),
+    "spatial_context": lambda node_name, scene, cfg: SpatialIndexNode(node_name, scene),
+    "publisher": lambda node_name, scene, cfg: PublisherNode(node_name, cfg.subscribers),
 }
+
+__all__ = [
+    "SourceBuilder",
+    "SceneBuilder",
+    "PipelineBuilder",
+    "EventBusBuilder",
+    "RendererBuilder",
+    "SinkBuilder",
+]

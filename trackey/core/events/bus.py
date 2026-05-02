@@ -4,28 +4,28 @@ from queue import Queue, Empty
 from threading import Thread, Lock
 import logging
 
-from trackey.data.schemas.event import Event
-from trackey.core.interfaces.subscriber import Subscriber
+from trackey.data.schemas.event             import BaseEvent
+from trackey.core.interfaces.subscriber     import Subscriber
 
 
 logger = logging.getLogger(__name__)
 
 class EventBus:
     def __init__(self):
-        self.event_queue = Queue()
-        self.subscribers = Dict[Type[Event], List[Subscriber]] = defaultdict(list)
-        self.lock = Lock()
-        self.worker = Thread(
+        self.event_queue: Queue                              = Queue()
+        self.subscribers: Dict[Type[BaseEvent], List[Subscriber]] = defaultdict(list)  # actual dict
+        self.lock:        Lock                               = Lock()
+        self.running:     bool                               = True
+        self.worker:      Thread                             = Thread(
             target=self._worker,
             daemon=True
         )
-
         self.worker.start()
 
-    def subscribe(self, event_type: Type[Event], subscriber: Subscriber) -> None:
+    def subscribe(self, event_type: Type[BaseEvent], subscriber: Subscriber) -> None:
         self.subscribers[event_type].append(subscriber)
 
-    def publish(self, event: Event) -> None:
+    def publish(self, event: BaseEvent) -> None:
         self.event_queue.put(event)
     
     def _worker(self):

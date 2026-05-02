@@ -1,6 +1,8 @@
 import cv2
-from trackey.core.io.input.base import InputSource
+
+from trackey.core.interfaces.source import InputSource
 from trackey.data.schemas.frame import Frame
+from trackey.core.registries.source import SOURCE_REGISTRY
 
 
 class CameraSource(InputSource):
