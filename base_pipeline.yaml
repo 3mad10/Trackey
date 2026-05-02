@@ -1,3 +1,10 @@
+source:
+  type: video
+  params:
+    path: input.mp4
+    width: 1280 # resize before pipeline — all nodes see 1280x720
+    height: 720
+
 scene:
   zones:
     - name: AreaA
@@ -10,30 +17,89 @@ scene:
       color: [255,0,0]
 
 pipeline:
-  - name: detectorA
-    type: detector
-    processor: yolo
+  nodes:
+    - name: detectorA
+      type: detector
+      processor: yolo
+      params:
+        weights: yolov8n.pt
+    - name: trackerA
+      type: tracker
+      processor: deepsort
+      params:
+        max_age: 4
+        n_init: 3
+        nms_max_overlap: 0.5
+        max_cosine_distance: 0.3
+        nn_budget: 100
+    - name: spatial_analyzer
+      type: spatial_index
+    - name: people_counter
+      type: analyzer
+      processor: counter
+      zone_name: Entrance
+      params:
+        target_classes:
+          - person
+        metrics:
+          - current
+          - cumulative
+    - name: count_condition
+      type: condition
+      params:
+        path: analytics.people_counter.person.current
+        operator: gt
+        value: 10
+        true_output: publisherA
+    - name: publisherA
+      type: publisher
+      events:
+        - type: count_exceeded_event
+          extract:
+            count:     analytics.counter.count
+            zone_name: analytics.counter.zone_name
+
+  edges:
+    - from: detectorA
+      to:   trackerA
+
+    - from: trackerA
+      to:   spatial_analyzer
+
+    - from: spatial_analyzer
+      to:   people_counter
+
+    - from: people_counter
+      to:   count_condition
+
+    - from: count_condition
+      to:   publisherA
+
+
+subscribers:
+  - type: mail
+    listen: [count_exceeded_event]
     params:
-      weights: yolov8n.pt
-  - name: trackerA
-    type: tracker
-    processor: deepsort
-    params:
-      max_age: 4
-      n_init: 3
-      nms_max_overlap: 0.5
-      max_cosine_distance: 0.3
-      nn_budget: 100
-  - name: spatial_analyzer
-    type: spatial_context
-  - name: people_counter
-    type: analyzer
-    processor: counter
-    zone: AreaA
-    params:
-      target_classes:
-        - person
-        - car
-      metrics:
-        - current
-        - cumulative
+      sender: mail1
+      to: [ops@company.com]
+      password: TRACKEY_SMTP_PASSWORD
+
+renderer:
+    type: opencv
+
+sinks:
+  - type: display
+    window_name: Trackey
+    show_zones: true
+
+  - type: recorder
+    path: output.mp4
+
+  - type: stream
+    port: 8080
+
+viewer:
+  type: opencv
+  window_name: Trackey
+  show_zones: true
+  show_lines: true

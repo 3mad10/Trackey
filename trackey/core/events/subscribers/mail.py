@@ -1,55 +1,70 @@
 import smtplib
+import numpy as np
 
-from email.message import EmailMessage
-from email.headerregistry import Address
+from typing import List, Optional
 
 from trackey.core.interfaces.subscriber import Subscriber
+from trackey.core.events.mails.message import MailMessage
 from trackey.core.events.types import CountExceededEvent
-from trackey.data.schemas.event import Event
+from trackey.data.schemas.event import BaseEvent
+
 
 
 class MailSubscriber(Subscriber):
+    def __init__(self,
+                 to:        List[str],
+                 sender:    str,
+                 smtp_host: str = "smtp.gmail.com",
+                 smtp_port: int = 587,
+                 password:  Optional[str] = None):
+        self.to        = to
+        self.sender    = sender
+        self.smtp_host = smtp_host
+        self.smtp_port = smtp_port
+        self.password  = password
 
-    def __init__(self, subscriber:str):
-        self.subscriber = subscriber
+    def on_event(self, event: BaseEvent) -> None:
+        message = self._format(event)
+        self._send(message)
 
-    def on_event(self,event:Event):
-
-        if not isinstance(event,CountExceededEvent):
-            return
-
-        subject = event.subject
-
-        description = (
-            f"Count exceeded: "
-            f"{event.count} > {event.threshold}"
+    def _format(self, event: BaseEvent) -> MailMessage:
+        return MailMessage(
+            sender=self.sender,
+            to=self.to,
+            subject=f"[Trackey] {type(event).__name__}",
+            body=self._build_body(event)
         )
 
-        self.send_mail(subject,description)
+    def _build_body(self, event: BaseEvent) -> str:
+        lines = [
+            f"Camera:    {event.camera_id}",
+            f"Frame:     {event.frame_id}",
+            f"Timestamp: {event.timestamp}",
+        ]
+        for field, value in event.__dict__.items():
+            if field not in ("camera_id", "frame_id", "timestamp"):
+                if not isinstance(value, np.ndarray):
+                    lines.append(f"{field}: {value}")
+        return "\n".join(lines)
 
+    def _send(self, message: MailMessage) -> None:
+        import smtplib
+        from email.mime.text import MIMEText
 
-    def send_mail(self,subject,description):
+        msg = MIMEText(message.body)
+        msg["Subject"] = message.subject
+        msg["From"]    = message.sender
+        msg["To"]      = ", ".join(message.to)
 
-        msg = EmailMessage()
-
-        msg['Subject'] = subject
-        msg['From'] = "mail1"
-        msg['To'] = self.subscriber
-
-        msg.set_content(
-            f"Trackey Alert\n\n{description}"
-        )
-
-        with smtplib.SMTP("smtp.gmail.com",587) as s:
-
-            s.starttls()
-
-            s.login(
-                "mail1",
-                "mrvz dfdb cpjn ifwx "
+        with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
+            server.starttls()
+            if self.password:
+                server.login(message.sender, self.password)
+            server.sendmail(
+                message.sender,
+                message.to,
+                msg.as_string()
             )
-
-            s.send_message(msg)
 
 if __name__ == '__main__':
     sub = MailSubscriber("mail2")

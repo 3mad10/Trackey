@@ -5,6 +5,7 @@ from trackey.data.schemas.detection import Detection, BoundingBox
 from trackey.data.schemas.frame import Frame
 from trackey.core.register import register_detector
 
+
 @register_detector('yolo')
 class YoloDetector(Detector):
     def __init__(self, weights="yolov8n.pt"):

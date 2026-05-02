@@ -3,27 +3,30 @@ import logging
 from pathlib import Path
 from trackey.core.scene.scene import Scene
 from trackey.data.schemas.geometry import Zone, Line, Polygon
+from trackey.core.factories.builder import Builder
 
 
 logger = logging.getLogger(__name__)
 
-class SceneBuilder:
-    def __init__(self, cfg_path: Path):
+class SceneBuilder(Builder):
+    SCENE_CFG_FORMAT = f" \
+    scene:\
+        - zones: \
+            - name: <zone-name> \
+              polygon: \
+                - [p1x,p1y] \
+                - [p2x,p2y] \
+                - [p3x,p3y] \
+                - [p4x,p4y] \
+              <You Can Optionally add the following> \
+              color: [b, g, r] \
+    "
+    def __init__(self, cfg_path: str):
         self.cfg = self._load_yaml(cfg_path)
 
     def build(self):
         scene = self._build_scene()
         return scene
-
-    def _load_yaml(self, cfg_path: Path):
-        cfg_path = Path(cfg_path)
-
-        if not cfg_path.exists():
-            logger.error(f"[SceneBuilder] Config file not found: {cfg_path.resolve()}")
-            raise FileNotFoundError(f"[SceneBuilder] Config file not found: {cfg_path.resolve()}")
-
-        with cfg_path.open("r") as f:
-            return yaml.safe_load(f)
     
     def _build_scene(self):
         """Build all nodes from the loaded YAML in order."""
@@ -31,17 +34,8 @@ class SceneBuilder:
         lines=[]
         scene = self.cfg.get("scene", [])
         if not isinstance(scene, dict):
-            raise TypeError("[SceneBuilder] Scene must be in the following format \
-            scene:\
-                - zones: \
-                    - name: <zone-name> \
-                      polygon: \
-                        - [p1x,p1y] \
-                        - [p2x,p2y] \
-                        - [p3x,p3y] \
-                        - [p4x,p4y] \
-                      color: [b, g, r] \
-                       ")
+            raise TypeError(f"[SceneBuilder] Scene must be in the following format \
+             {self.SCENE_CFG_FORMAT}")
         
         if "zones" in scene:
             for zone_cfg in scene["zones"]:
@@ -53,9 +47,11 @@ class SceneBuilder:
         
     def _build_zone(self, zone_cfg):
         if "name" not in zone_cfg:
-            raise ValueError("[SceneBuilder] Zone must contain a unique name")
+            raise ValueError(f"[SceneBuilder] Zone must contain a unique name \
+                             {self.SCENE_CFG_FORMAT}")
         if "polygon" not in zone_cfg:
-            raise ValueError("[SceneBuilder] Zone must contain a polygon")
+            raise ValueError(f"[SceneBuilder] Zone must contain a polygon \
+            {self.SCENE_CFG_FORMAT}")
         return Zone.model_validate(
             {
                 'name': zone_cfg['name'],

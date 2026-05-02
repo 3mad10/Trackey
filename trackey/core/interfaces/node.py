@@ -1,31 +1,29 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import List
 
 from trackey.core.context import FrameContext
-from trackey.core.interfaces.subscriber import Subscriber
 
+
+@dataclass
 class PipelineNode(ABC):
+    name: str
 
-    @abstractmethod
-    def __init__(self, name: str):
-        self.name = name
-    
     @abstractmethod
     def process(self, ctx: FrameContext) -> FrameContext:
-        """
-        Receives a FrameContext (frame, detections, tracks, features, etc.)
-        Returns updated FrameContext.
-        """
         pass
 
+    @abstractmethod
+    def get_inputs(self) -> List[str]:
+        pass
 
-class PublisherNode(PipelineNode):
-    def __init__(self, name: str, subscribers:List[Subscriber]):
-        super().__init__(name=name)
-        self.subscribers = subscribers
+    @abstractmethod
+    def get_outputs(self) -> List[str]:
+        pass
 
-    def add_subscriber(self, subscriber: Subscriber):
-        self.subscribers.append(subscriber)
-    
-    def remove_subscriber(self, subscriber: Subscriber):
-        self.subscribers.remove(subscriber)
+    def __hash__(self):
+        return hash(self.name)
+
+    def __eq__(self, other):
+        return isinstance(other, PipelineNode) and self.name == other.name
+

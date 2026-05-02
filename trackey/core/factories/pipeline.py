@@ -1,248 +1,368 @@
 import yaml
 import logging
 from pathlib import Path
+from collections import defaultdict, deque
+from typing import List, Tuple, Dict, Optional
+
 from trackey.core.registries.detection import DETECTOR_REGISTRY
-from trackey.core.registries.tracking import TRACKER_REGISTRY
-from trackey.core.registries.analyzer import ANALYZER_REGISTRY
-from trackey.core.registries.node import NODE_REGISTRY
-from trackey.core.scene.scene import Scene
-from trackey.data.schemas.pipeline import NodeCfg
+from trackey.core.registries.tracking  import TRACKER_REGISTRY
+from trackey.core.registries.analyzer  import ANALYZER_REGISTRY
+from trackey.core.registries.node      import NODE_REGISTRY
+from trackey.core.scene.scene          import Scene
+from trackey.core.events.bus           import EventBus
+from trackey.core.pipeline.edge        import Edge
+from trackey.core.interfaces.node      import PipelineNode
+from trackey.core.factories.builder    import Builder
+from trackey.core.utils.graph          import topological_sort
 
 logger = logging.getLogger(__name__)
 
-class PipelinBuilder:
-    PROCESSING_NODES = ['detector', 'tracker', 'analyzer']
-    CONTROL_NODES = ['spatial_context', 'branch', 'conditional']
-    PIPELINE_STRUCUTURE = f"pipeline:\
-                            - name: <unique-node-name> \
-                              type: <catagory-of-node> \
-                              <if node of type {PROCESSING_NODES}> \
-                              processor: <actual-implementation>\
-                              params: \
-                                param1: <param-value> \
-                                param2: <param-value> \
-                              <end if> \
-                            - name: <unique-node-name> \
-                              type: <catagory-of-node>"
+
+class PipelineBuilder(Builder):
+    PROCESSING_NODES = ["detector", "tracker", "analyzer", "reid", "postprocessor"]
+    CONTROL_NODES    = ["spatial_index", "condition", "switch", "publisher", "branch"]
+
+    PIPELINE_STRUCTURE = (
+        "pipeline:\n"
+        "  nodes:\n"
+        "    - name: <unique-node-name>\n"
+        "      type: <detector|tracker|analyzer|spatial_index|condition|publisher>\n"
+        "      processor: <implementation>   # processing nodes only\n"
+        "      zone_name: <zone>             # analyzer only, optional\n"
+        "      params:\n"
+        "        param1: value\n"
+        "  edges:\n"
+        "    - from: <source-node-name>\n"
+        "      to:   <target-node-name>\n"
+    )
+
     COMPONENT_REGISTRY = {
-        "detector": DETECTOR_REGISTRY,
-        "tracker": TRACKER_REGISTRY,
-        "analyzer": ANALYZER_REGISTRY,
+        "detector":     DETECTOR_REGISTRY,
+        "tracker":      TRACKER_REGISTRY,
+        "analyzer":     ANALYZER_REGISTRY,
+    }
+
+    # which control nodes need scene injected
+    SCENE_NODES = {"spatial_index"}
+
+    # which control nodes need event_bus injected
+    EVENT_BUS_NODES = {"publisher"}
+
+    NODE_BUILDERS = {
+        # processing
+        "detector":      "_build_detector_node",
+        "tracker":       "_build_tracker_node",
+        "analyzer":      "_build_analyzer_node",
+        "reid":          "_build_reid_node",
+        "postprocessor": "_build_postprocessor_node",
+        # control
+        "spatial_index": "_build_spatial_index_node",
+        "condition":     "_build_condition_node",
+        "switch":        "_build_switch_node",
+        "publisher":     "_build_publisher_node",
+        "branch":        "_build_branch_node",
     }
                               
-    def __init__(self, cfg_path: str, scene: Scene):
-        self.nodes = []
-        self.cfg = self._load_yaml(cfg_path)
-        self.scene = scene
+    def __init__(self, cfg_path: str,
+                 scene:     Scene,
+                 event_bus: EventBus):
+        self.nodes:     Dict[str, PipelineNode] = {}
+        self.edges:     List[Edge]              = []
+        self.cfg        = self._load_yaml(cfg_path)
+        self.scene      = scene
+        self.event_bus  = event_bus
 
-    def build(self):
-        self._build_pipeline()
-        return self.nodes
+    # ------------------------------------------------------------------ #
+    # Public API                                                           #
+    # ------------------------------------------------------------------ #
 
-    def _load_yaml(self, cfg_path: str):
-        cfg_path = Path(cfg_path)
+    def build(self) -> Tuple[List[PipelineNode], List[Edge]]:
+        self._build_nodes()
+        self._build_edges()
+        self._validate_wiring()
+        logger.info(
+            f"[PipelineBuilder] Built {len(self.nodes)} nodes "
+            f"and {len(self.edges)} edges"
+        )
+        return list(self.nodes.values()), self.edges
 
-        if not cfg_path.exists():
-            logger.error(f"[PipelineBuilder] Config file not found: {cfg_path.resolve()}")
-            raise FileNotFoundError(f"[PipelineBuilder] Config file not found: {cfg_path.resolve()}")
+    def get_node(self, node_name: str) -> Optional[PipelineNode]:
+        return self.nodes.get(node_name)
 
-        with cfg_path.open("r") as f:
-            return yaml.safe_load(f)
+    def get_pipeline_order(self) -> List[str]:
+        return list(self.nodes.keys())
 
-    def _build_pipeline(self):
-        """Build all nodes from the loaded YAML in order."""
-        pipeline = self.cfg.get("pipeline", [])
-        if not isinstance(pipeline, list):
-            raise TypeError(f"[PipelineBuilder] Pipeline must be a list of nodes format of yaml must be \
-                            {self.PIPELINE_STRUCUTURE}")
+    # ------------------------------------------------------------------ #
+    # Build                                                              #
+    # ------------------------------------------------------------------ #
 
-        for node_cfg in pipeline:
-            self._build_node(node_cfg)
+    def _build_nodes(self) -> None:
+        pipeline_cfg = self.cfg.get("pipeline", {})
+        nodes_cfg    = pipeline_cfg.get("nodes", [])
 
-    def _build_node(self, node_cfg: NodeCfg):
+        if not isinstance(nodes_cfg, list):
+            raise TypeError(
+                f"[PipelineBuilder] pipeline.nodes must be a list.\n"
+                f"{self.PIPELINE_STRUCTURE}"
+            )
 
-        self._validate_node_cfg(node_cfg)
+        for node_cfg in nodes_cfg:
+            self._validate_node_cfg(node_cfg)
+            node = self._build_node(node_cfg)
+            self.nodes[node.name] = node
 
-        node_type = node_cfg["type"]
+    def _build_edges(self) -> None:
+        pipeline_cfg = self.cfg.get("pipeline", {})
+        edges_cfg    = pipeline_cfg.get("edges", [])
+
+        for edge_cfg in edges_cfg:
+            self._validate_edge_cfg(edge_cfg)
+            self.edges.append(Edge(
+                source=edge_cfg["from"],
+                target=edge_cfg["to"]
+            ))
+    
+
+    def _build_node(self, node_cfg: dict) -> PipelineNode:
+        node_type    = node_cfg["type"]
+        builder_name = self.NODE_BUILDERS[node_type]
+        builder      = getattr(self, builder_name)
+        node         = builder(node_cfg)
+        logger.info(
+            f"[PipelineBuilder] Built node: "
+            f"{node_cfg['name']} ({node_type})"
+        )
+        return node
+    
+    # ------------------------------------------------------------------ #
+    # Processing node builders                                             #
+    # ------------------------------------------------------------------ #
+
+    def _build_detector_node(self, node_cfg: dict):
+        from trackey.core.pipeline.nodes import DetectorNode
+        component = self._build_component(node_cfg)
+        return DetectorNode(name=node_cfg["name"], detector=component)
+
+    def _build_tracker_node(self, node_cfg: dict):
+        from trackey.core.pipeline.nodes import TrackerNode
+        component = self._build_component(node_cfg)
+        return TrackerNode(name=node_cfg["name"], tracker=component)
+
+    def _build_analyzer_node(self, node_cfg: dict):
+        from trackey.core.pipeline.nodes import AnalyzerNode
+        component = self._build_component(node_cfg)
+        return AnalyzerNode(
+            name=node_cfg["name"],
+            analyzer=component,
+            zone_name=node_cfg.get("zone_name")
+        )
+
+    def _build_reid_node(self, node_cfg: dict):
+        from trackey.core.pipeline.nodes import ReIDNode
+        component = self._build_component(node_cfg)
+        return ReIDNode(name=node_cfg["name"], reid_model=component)
+
+    def _build_postprocessor_node(self, node_cfg: dict):
+        from trackey.core.pipeline.nodes import PostprocessorNode
+        component = self._build_component(node_cfg)
+        return PostprocessorNode(
+            name=node_cfg["name"],
+            postprocessor=component
+        )
+
+    # ------------------------------------------------------------------ #
+    # Control node builders                                                #
+    # ------------------------------------------------------------------ #
+
+    def _build_spatial_index_node(self, node_cfg: dict):
+        from trackey.core.pipeline.nodes import SpatialIndexNode
+        return SpatialIndexNode(
+            name=node_cfg["name"],
+            scene=self.scene
+        )
+
+    def _build_condition_node(self, node_cfg: dict):
+        from trackey.core.pipeline.nodes import ConditionNode
+        params = node_cfg.get("params") or {}
+        return ConditionNode(name=node_cfg["name"], **params)
+
+    def _build_switch_node(self, node_cfg: dict):
+        from trackey.core.pipeline.nodes import SwitchNode
+        params = node_cfg.get("params") or {}
+        return SwitchNode(name=node_cfg["name"], **params)
+
+    def _build_publisher_node(self, node_cfg: dict):
+        from trackey.core.pipeline.nodes import PublisherNode
+        definitions = self._build_event_definitions(
+            node_cfg.get("events", [])
+        )
+        return PublisherNode(
+            name=node_cfg["name"],
+            definitions=definitions,
+            event_bus=self.event_bus
+        )
+
+
+    # ------------------------------------------------------------------ #
+    # Shared component builder                                             #
+    # ------------------------------------------------------------------ #
+
+    def _build_component(self, node_cfg: dict):
+        node_type  = node_cfg["type"]
+        processor  = node_cfg["processor"]
+        params     = node_cfg.get("params") or {}
+
+        registry = self.COMPONENT_REGISTRY.get(node_type)
+        if registry is None:
+            raise ValueError(
+                f"[PipelineBuilder] No component registry for: '{node_type}'"
+            )
+
+        component_class = registry.get(processor)
+        if component_class is None:
+            raise ValueError(
+                f"[PipelineBuilder] Unknown processor '{processor}' "
+                f"for type '{node_type}'. "
+                f"Available: {list(registry.keys())}"
+            )
+
+        return component_class(**params)
+
+    def _build_event_definitions(self, events_cfg: list) -> list:
+        from trackey.core.registries.event import EVENT_REGISTRY
+        from trackey.data.schemas.event import EventDefinition
+
+        definitions = []
+        for event_cfg in events_cfg:
+            event_type = EVENT_REGISTRY.get(event_cfg["type"])
+            if not event_type:
+                raise ValueError(
+                    f"[PipelineBuilder] Unknown event type: "
+                    f"'{event_cfg['type']}'. "
+                    f"Available: {list(EVENT_REGISTRY.keys())}"
+                )
+            definitions.append(EventDefinition(
+                event_type=event_type,
+                extract=event_cfg.get("extract", {})
+            ))
+        return definitions
+    
+    # ------------------------------------------------------------------ #
+    # Validation                                                           #
+    # ------------------------------------------------------------------ #
+
+    def _validate_node_cfg(self, node_cfg: dict) -> None:
+        if not isinstance(node_cfg, dict):
+            raise TypeError(
+                f"[PipelineBuilder] Each node must be a dict.\n"
+                f"{self.PIPELINE_STRUCTURE}"
+            )
+
+        # required fields
+        for field in ("name", "type"):
+            if field not in node_cfg:
+                raise ValueError(
+                    f"[PipelineBuilder] Node missing '{field}'.\n"
+                    f"{self.PIPELINE_STRUCTURE}"
+                )
+
         node_name = node_cfg["name"]
-        if node_type in self.PROCESSING_NODES:
-            # processing node
-            node = self._build_processing_node(node_cfg)
-
-        else:
-            # control node
-            node = self._build_control_node(node_cfg)
-
-        self.nodes.append(node)
-        logger.info(f"[PipelineBuilder] Built node: {node_name} ({node_type})")
-
-
-    def _validate_node_cfg(self, node_cfg: NodeCfg) -> None:
-        if "name" not in node_cfg or "type" not in node_cfg:
-            logger.error(f"[PipelineBuilder] Node must have name AND type attributes : \
-                             {self.PIPELINE_STRUCUTURE}")
-            raise ValueError(f"[PipelineBuilder] Node must have name AND type attributes : \
-                             {self.PIPELINE_STRUCUTURE}")
-        
-        node_name = node_cfg["name"]
         node_type = node_cfg["type"]
 
-        if any(node.name == node_name for node in self.nodes):
-            logger.error(f"[PipelineBuilder] Duplicate node name detected: '{node_name}'")
-            raise ValueError(f"[PipelineBuilder] Duplicate node name detected: '{node_name}'")
+        # duplicate name check
+        if node_name in self.nodes:
+            raise ValueError(
+                f"[PipelineBuilder] Duplicate node name: '{node_name}'"
+            )
 
+        # valid type check
+        all_types = self.PROCESSING_NODES + self.CONTROL_NODES
+        if node_type not in all_types:
+            raise ValueError(
+                f"[PipelineBuilder] Unknown node type: '{node_type}'. "
+                f"Available: {all_types}"
+            )
+
+        # type-specific validation
         if node_type in self.PROCESSING_NODES:
             self._validate_processing_node(node_cfg)
-        elif node_type in self.CONTROL_NODES:
+        else:
             self._validate_control_node(node_cfg)
-        else:
-            logger.error(f"[PipelineBuilder] Invalid Node type: '{node_type}' \
-                         Available node types: {self.PROCESSING_NODES + self.CONTROL_NODES}")
-            raise ValueError(f"[PipelineBuilder] Duplicate node name detected: '{node_name}'")
 
-    def _validate_processing_node(self, node_cfg: NodeCfg) -> None:
+    def _validate_processing_node(self, node_cfg: dict) -> None:
         if "processor" not in node_cfg:
-            logger.error(f"[PipelineBuilder] Attribute processor must be added for node of type: '{node_cfg['type']}'")
-            raise ValueError(f"[PipelineBuilder] Attribute processor must be added for node of type: '{node_cfg['type']}'")
-    
-    def _validate_control_node(self, node_cfg: NodeCfg) -> None:
+            raise ValueError(
+                f"[PipelineBuilder] Processing node '{node_cfg['type']}' "
+                f"requires 'processor' field.\n"
+                f"{self.PIPELINE_STRUCTURE}"
+            )
+
+    def _validate_control_node(self, node_cfg: dict) -> None:
         if "processor" in node_cfg:
-            logger.error(f"[PipelineBuilder] Attribute processor must NOT be added for node of type: '{node_cfg['type']}'")
-            raise ValueError(f"[PipelineBuilder] Attribute processor must NOT be added for node of type: '{node_cfg['type']}'")
-    
-    def _build_processing_node(self, node_cfg: NodeCfg):
-        node_name = node_cfg["name"]
-        node_type = node_cfg["type"]
-        
-        params = node_cfg.get("params") or {}
-        processor = node_cfg["processor"]
-        
-        # node-level params (zone_name, event_name, etc.)
-        node_params = {
-            k: v for k, v in node_cfg.items()
-            if k not in ("name", "type", "processor", "params")
-        }
-        
-        component_class = self.COMPONENT_REGISTRY[node_type][processor]
-        component = component_class(**params)
-        
-        node_class = NODE_REGISTRY[node_type]
-        node = node_class(node_name, component, **node_params)
-        return node
+            raise ValueError(
+                f"[PipelineBuilder] Control node '{node_cfg['type']}' "
+                f"must not have 'processor' field.\n"
+                f"{self.PIPELINE_STRUCTURE}"
+            )
 
-    def _build_control_node(self, node_cfg: NodeCfg):
-        node_name = node_cfg["name"]
-        node_type = node_cfg["type"]
+    def _validate_edge_cfg(self, edge_cfg: dict) -> None:
+        for field in ("from", "to"):
+            if field not in edge_cfg:
+                raise ValueError(
+                    f"[PipelineBuilder] Edge missing '{field}'.\n"
+                    f"edges:\n"
+                    f"  - from: source_node\n"
+                    f"    to:   target_node\n"
+                )
 
-        # node-level params (zone_name, event_name, etc.)
-        node_params = {
-            k: v for k, v in node_cfg.items()
-            if k not in ("name", "type")
-        }
-        node_class = NODE_REGISTRY[node_type]
-        node = node_class(name=node_name, scene=self.scene, **node_params)
-        return node
+        source = edge_cfg["from"]
+        target = edge_cfg["to"]
 
-    def _remove_node_by_position(self, pipeline, position):
-        if not isinstance(position, int):
-            raise TypeError("position must be an integer")
+        if source not in self.nodes:
+            raise ValueError(
+                f"[PipelineBuilder] Edge references unknown "
+                f"source node: '{source}'"
+            )
+        if target not in self.nodes:
+            raise ValueError(
+                f"[PipelineBuilder] Edge references unknown "
+                f"target node: '{target}'"
+            )
 
-        if position < 0 or position >= len(self.nodes):
-            raise IndexError("position out of range")
+    def _validate_wiring(self) -> None:
+        available = {"frame", "frame_id", "camera_id", "timestamp"}
+        order     = topological_sort(list(self.nodes.keys()), self.edges)
 
-        removed_node = self.nodes.pop(position)
-        pipeline.pop(position)
+        for node_name in order:
+            node = self.nodes[node_name]
+            for required in node.get_inputs():
+                if not self._is_satisfied(required, available):
+                    producer = self._find_producer(required)
+                    raise ValueError(
+                        f"[PipelineBuilder] Node '{node_name}' requires "
+                        f"'{required}' which is not available upstream.\n"
+                        + (
+                            f"Hint: add '{producer}' before '{node_name}'."
+                            if producer else
+                            f"No node produces '{required}'."
+                        )
+                    )
+            for output in node.get_outputs():
+                available.add(output)
 
-        print(f"[PipelineBuilder] Removed node at position {position}: {removed_node[0]}")
+    def _is_satisfied(self, required: str, available: set) -> bool:
+        if required in available:
+            return True
+        # prefix match — "analytics.counter" satisfied by "analytics"
+        return any(required.startswith(item) for item in available)
 
-    def _remove_node_by_name(self, pipeline, node_name):
-        if not isinstance(node_name, str):
-            raise TypeError("node_name must be a string")
-
-        for idx, (name, _) in enumerate(self.nodes):
-            if name == node_name:
-                self.nodes.pop(idx)
-                pipeline.pop(idx)
-                print(f"[PipelineBuilder] Removed node '{node_name}'")
-                return
-
-        raise ValueError(f"[PipelineBuilder] node '{node_name}' not found in pipeline.")
-
-    def insert_node(self, new_node_cfg, position=None, after_node=None):
-        """
-        Insert a node at a specific position in the pipeline and nodes list.
-        If after_node and position are not passed the node is added to the end of the pipeline
-
-        Parameters:
-        - position: integer index (0-based)
-        - after_node: insert after this node name
-        """
-        pipeline = self.cfg.setdefault("pipeline", [])
-
-        # Determine position in the YAML list
-        if after_node:
-            for idx, s in enumerate(pipeline):
-                if s["name"] == after_node:
-                    position = idx + 1
-                    break
-            else:
-                raise ValueError(f"node '{after_node}' not found for insertion")
-
-        if position is None:
-            pipeline.append(new_node_cfg)
-            position = len(self.nodes)  # append at the end
-        else:
-            pipeline.insert(position, new_node_cfg)
-
-        # Build instance
-        node_name = new_node_cfg["name"]
-        component = new_node_cfg["component"]
-        node_type = new_node_cfg["type"]
-        factory = FACTORY_ROUTER.get(component)
-        params = new_node_cfg.get("params") or {}
-        self._build_node(new_node_cfg)
-
-        # Move it to correct position if needed
-        if position is not None and position < len(self.nodes) - 1:
-            self.nodes.insert(position, self.nodes.pop())
-        print(f"[PipelineBuilder] Inserted node: {node_name}")
-
-    def remove_node(self, position=None, node_name=None):
-        """
-        Remove a node from the pipeline.
-        Either position or node_name must be provided (not both).
-        """
-
-        if not self.nodes:
-            raise ValueError("Cannot remove a node from an empty pipeline.")
-
-        if position is None and node_name is None:
-            raise ValueError("Either position or node_name must be provided.")
-
-        if position is not None and node_name is not None:
-            raise ValueError("Provide only one of position or node_name.")
-
-        pipeline = self.cfg.get("pipeline", [])
-
-        # --- Remove by position ---
-        if position is not None:
-            self._remove_node_by_position(pipeline=pipeline, position=position)
-            return
-
-        # --- Remove by node_name ---
-        if node_name is not None:
-            self._remove_node_by_name(pipeline=pipeline, node_name=node_name)
-
-    def get_node(self, node_name):
-        """Return the built instance of a node by name (first match)."""
-        for name, inst in self.nodes:
-            if name == node_name:
-                return inst
+    def _find_producer(self, required):
+        for node in self.nodes.values():
+            for output in node.get_outputs():
+                if required.startswith(output):
+                    return node.name
         return None
 
-    def get_pipeline_order(self):
-        """Return the names of the nodes in order."""
-        return [name for name, _ in self.nodes]
 
 
 if __name__ == '__main__':
@@ -251,7 +371,7 @@ if __name__ == '__main__':
     from trackey.core.features.mediapipe import MPLandmarkDetector
     from trackey.core.trackers.deepsort import DeepSortTracker
 
-    builder = PipelinBuilder('../base_pipeline.yaml')
+    builder = PipelineBuilder('../base_pipeline.yaml')
     print("Pipeline order:", builder.get_pipeline_order())
 
     # Example: insert a new detector after 'detector1'

@@ -1,8 +1,30 @@
-from pydantic import BaseModel, Field
+from __future__ import annotations
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from typing import Type, Dict
+
+from trackey.core.utils.path import PathExtractor
 
 
-class Event(BaseModel):
-    subject: str = Field(description="Subject of the event.")
-    frame_id: int = Field(description="ID of the Frame the event occured on.")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+@dataclass
+class BaseEvent:
+    frame_id:  int
+    camera_id: str
+    timestamp: datetime
+
+@dataclass
+class EventDefinition:
+    event_type:     Type[BaseEvent]
+    extract:        Dict[str, str]
+
+    def build(self, ctx) -> BaseEvent:
+        extracted = {
+            field: PathExtractor(path).extract(ctx)
+            for field, path in self.extract.items()
+        }
+        return self.event_type(
+            frame_id=ctx.frame_id,
+            camera_id=ctx.camera_id,
+            timestamp=datetime.now(timezone.utc),
+            **extracted
+        )

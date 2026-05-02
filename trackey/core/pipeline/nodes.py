@@ -1,12 +1,16 @@
-from typing import List
+from typing import List, Any, Optional, Dict
+from dataclasses import dataclass, field, replace
 
 from trackey.data.schemas.track import Track
 from trackey.core.context import FrameContext
 from trackey.core.interfaces.node import PipelineNode
-from trackey.core.context import FrameContext
 from trackey.core.interfaces.node import PipelineNode
-from trackey.core.scene.scene import Scene
 from trackey.core.scene.mappings import ZoneMemberships
+from trackey.core.scene import Scene
+from trackey.data.schemas.event import EventDefinition
+from trackey.core.events.bus import EventBus
+from trackey.core.utils.path import PathExtractor
+from trackey.core.interfaces import *
 
 
 class ZoneFilterMixin:
@@ -16,71 +20,148 @@ class ZoneFilterMixin:
             return [t for t in ctx.tracks if t.id in track_ids]
         return ctx.tracks
 
-
+@dataclass
 class DetectorNode(PipelineNode):
-    def __init__(self, name: str,  component, **node_cfg):
-        """
-        detector: object with method detect(frame) -> list[Detection]
-        """
-        super().__init__(name)
-        self.detector = component
+    detector: Detector
 
     def process(self, ctx: FrameContext) -> FrameContext:
-        frame = ctx.frame
-        if frame is None:
-            return ctx
+        detections = self.detector.detect(ctx.frame)
+        return ctx.with_detections(detections)
+    
+    def get_inputs(self) -> List[str]:
+        return ["frame"]
 
-        detections = self.detector.detect(frame)
-        ctx.detections = detections
-        return ctx
+    def get_outputs(self) -> List[str]:
+        return ["detections"]
 
-
+@dataclass
 class TrackerNode(PipelineNode):
-    def __init__(self, name: str,  component, **node_cfg):
-        """
-        tracker: object with method update(frame, detections) -> list[Track]
-        """
-        super().__init__(name)
-        self.tracker = component
+    tracker: Tracker
 
     def process(self, ctx: FrameContext) -> FrameContext:
-        frame = ctx.frame
-        detections = ctx.detections
-        tracks = self.tracker.update(detections, frame)
-        ctx.tracks = tracks
-        # print("track")
-        # print(ctx.tracks)
-        return ctx
+        tracks = self.tracker.update(ctx.detections, ctx.frame)
+        return ctx.with_tracks(tracks)
+    
+    def get_inputs(self) -> List[str]:
+        return ["detections", "frame"]
 
+    def get_outputs(self) -> List[str]:
+        return ["tracks"]
 
+@dataclass
 class AnalyzerNode(PipelineNode, ZoneFilterMixin):
-    def __init__(self, name: str, component, **node_cfg):
-        """
-        analyzer: object with method analyze(tracks) -> list[Track]
-        """
-        super().__init__(name)
-        self.analyzer = component
-        if 'zone' in node_cfg:
-            self.zone_name = node_cfg['zone']
-        else:
-            self.zone_name = None
+    analyzer:  Analyzer
+    zone_name: Optional[str] = None
 
     def process(self, ctx: FrameContext) -> FrameContext:
-
         tracks = self.filter_tracks(ctx)
+        result = self.analyzer.analyze(tracks)
+        return ctx.with_analytics(self.name, result)
+    
+    def get_inputs(self) -> List[str]:
+        return ["tracks", "zone_memberships"]
 
-        ctx.analytics[self.name] = self.analyzer.analyze(tracks)
+    def get_outputs(self) -> List[str]:
+        return [f"analytics.{self.name}"]
 
+@dataclass
+class SpatialIndexNode(PipelineNode):
+    scene: Scene
+
+    def process(self, ctx: FrameContext) -> FrameContext:
+        memberships = ZoneMemberships.build(ctx.tracks, self.scene)
+        return replace(ctx, zone_memberships=memberships)
+    
+    def get_inputs(self) -> List[str]:
+        return ["tracks"]
+
+    def get_outputs(self) -> List[str]:
+        return ["zone_memberships"]
+
+@dataclass
+class SwitchNode(PipelineNode):
+    path: str
+    cases: Dict[Any, str]
+    default: Optional[str] = None
+
+    def __post_init__(self):
+        self._extractor = PathExtractor(self.path)
+
+    def process(self, ctx: FrameContext) -> FrameContext:
+        value  = self._extractor.extract(ctx)
+        target = self.cases.get(value, self.default)
+        return ctx.with_branch(target)
+    
+    def get_inputs(self) -> List[str]:
+        return [self.path]
+
+    def get_outputs(self) -> List[str]:
+        return ["triggered_conditions"]
+
+@dataclass
+class PublisherNode(PipelineNode):
+    def __init__(self, name: str,
+                 definitions: List[EventDefinition],
+                 event_bus: EventBus):
+        super().__init__(name)
+        self.definitions = definitions
+        self.event_bus   = event_bus
+
+    def process(self, ctx: FrameContext) -> FrameContext:
+        # no condition check — DAG already decided we should run
+        for definition in self.definitions:
+            event = definition.build(ctx)
+            self.event_bus.publish(event)
         return ctx
 
+    def get_inputs(self) -> List[str]:
+        return []
 
+    def get_outputs(self) -> List[str]:
+        return []
+
+@dataclass
+class ConditionNode(PipelineNode):
+    path:         str
+    operator:     str
+    value:        Any
+    true_output:  str
+    false_output: Optional[str] = None
+
+    def __post_init__(self):
+        self._extractor = PathExtractor(self.path)
+
+    def process(self, ctx: FrameContext) -> FrameContext:
+        result = self._evaluate(self._extractor.extract(ctx))
+        return replace(
+            ctx,
+            active_branch=self.true_output if result else self.false_output
+        )
+    
+    def get_inputs(self) -> List[str]:
+        return [self.path]
+
+    def get_outputs(self) -> List[str]:
+        return ["triggered_conditions"]
+
+    def _evaluate(self, value: Any) -> bool:
+        ops = {
+            "gt":  lambda a, b: a > b,
+            "lt":  lambda a, b: a < b,
+            "eq":  lambda a, b: a == b,
+            "gte": lambda a, b: a >= b,
+            "lte": lambda a, b: a <= b,
+            "ne":  lambda a, b: a != b,
+        }
+        op = ops.get(self.operator)
+        if not op:
+            raise ValueError(f"Unknown operator: {self.operator}")
+        return op(value, self.value)
+    
+
+@dataclass
 class ReIDNode(PipelineNode, ZoneFilterMixin):
-    def __init__(self, name: str,  reid_model):
-        """
-        reid_model: object with method assign_ids(tracks) -> list[Track]
-        """
-        super().__init__(name)
-        self.reid_model = reid_model
+    reid_model: None
 
     def process(self, ctx: FrameContext) -> FrameContext:
 
@@ -92,29 +173,11 @@ class ReIDNode(PipelineNode, ZoneFilterMixin):
 
 
 class PostprocessorNode(PipelineNode):
-    def __init__(self, name: str,  postprocessor):
-        """
-        postprocessor: object with method process(tracks) -> list[Track]
-        """
-        super().__init__(name)
-        self.postprocessor = postprocessor
+    postprocessor: None
 
     def process(self, ctx: FrameContext) -> FrameContext:
         tracks = ctx.tracks
 
         processed_tracks = self.postprocessor.process(tracks)
         ctx.tracks = processed_tracks
-        return ctx
-
-
-class SpatialIndexNode(PipelineNode):
-    def __init__(self, name: str, scene, **node_cfg):
-        """
-        SpatialIndexNode: object with method FrameContext -> FrameContext
-        """
-        super().__init__(name)
-        self.scene = scene
-
-    def process(self, ctx: FrameContext) -> FrameContext:
-        ctx.zone_memberships = ZoneMemberships.build(ctx.tracks, self.scene)
         return ctx
