@@ -1,132 +1,39 @@
 import cv2
 import logging
-import numpy as np
-from uuid import UUID
-from typing import Union, Optional, List
 
-from trackey.core.io.output.viewer.base import OutputViewer
-from trackey.core.scene.scene import Scene
-from trackey.data.schemas.frame import Frame
+from trackey.core.interfaces.sink import OutputSink
 from trackey.data.schemas.pipeline import PipelineResult
-from trackey.data.schemas.track import Track
-from trackey.data.schemas.detection import Detection
-from trackey.data.schemas.view import GlobalStateBox, GlobalStateBoxPlacement
-from trackey.core.io.output.viewer.drawable import (
-    BBoxDrawable, 
-    PointDrawable, 
-    PolygonDrawable,
-    LineDrawable,
-    detection_to_drawables
-)
-
+from trackey.core.register import register_sink
 
 logger = logging.getLogger(__name__)
 
-class OpenCVViewer(OutputViewer):
+
+class OpenCVViewer(OutputSink):
     def __init__(self,
-                 window_name: str = "Trackey",
-                 show_scene: Optional[bool] = True,
-                 show_lines: Optional[bool] = True):
+                 window_name: str = "Trackey"
+                 ):
         """
         Args:
             window_name: OpenCV window name
-            show_zones: If True, draw analyzer zones/areas of effect
         """
         self.window_name = window_name
         self.is_open = False
-        self.show_scene = show_scene
-        self.static_layer = None
-
-
-    def show(self, frame: Optional[Frame], data: PipelineResult):
-        if frame is None:
-            return
-
-        base = frame.frame
-
-        img = base
-
-        if self.static_layer is not None:
-            img = cv2.addWeighted(img,1,self.static_layer,1,0)
-        
-
-        # for drawable in data.drawables:
-        #     drawable.draw(img)
-        # detections = data.detections
-        # for det in detections:
-        #     # print("Detection : ", det)
-        #     # print("class_name : ", det.class_name)
-        #     drawables = detection_to_drawables(det, frame)
-        #     for drawable in drawables:
-        #         drawable.draw(img)
-
-        # tracks = data.tracks
-        # for track in tracks:
-        #     if not track.view_track or not track.history:
-        #         continue
-        #     det = track.history[-1]
-        #     for drawable in detection_to_drawables(det, frame):
-        #         drawable.draw(img)
-
-        analytics = data.analytics
-        # draw activities, counters, heatmaps, etc.
-
-        self._render(img)
-        
 
     def open(self) -> bool:
         cv2.namedWindow(self.window_name, cv2.WINDOW_NORMAL)
         self.is_open = True
         return self.is_open
+    
+    def write(self, result: PipelineResult) -> None:
+        if result.rendered_frame is None:
+            return
+        cv2.imshow(self.window_name, result.rendered_frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            raise KeyboardInterrupt
 
     def close(self):
         if self.is_open:
             cv2.destroyWindow(self.window_name)
         self.is_open = False
-
-    def build_scene(self, scene: Scene, frame: Frame):
-        self.static_layer = np.zeros_like(frame.frame)
-        if not scene:
-            return
-        for zone in scene.zones.values():
-            PolygonDrawable(
-                points=zone.polygon.points,
-                frame_width=frame.width,
-                frame_height=frame.height,
-                color=zone.color,
-                filled=zone.filled,
-                alpha=zone.alpha,
-                label=zone.name
-            ).draw(self.static_layer)
-        for line in scene.lines.values():
-            LineDrawable(
-                line=line,
-                frame_width=frame.width,
-                frame_height=frame.height
-            ).draw(self.static_layer)
-
-    def _render(self, img):
-            cv2.imshow(self.window_name, img)
-            key = cv2.waitKey(1) & 0xFF
-            if key in (ord("q"), 27):
-                raise KeyboardInterrupt
     
 
-    def _draw_zones(self, img: np.ndarray, zones, width: int, height: int):
-        """Draw analyzer zones/areas of effect"""
-        for name, zone_info in zones.items():
-            # print("=======================")
-            # print(name)
-            # print(zone_info)
-            drawable = PolygonDrawable(
-                points=zone_info.polygon.points,
-                frame_width=width,
-                frame_height=height,
-                color=zone_info.color,
-                filled=zone_info.filled,
-                alpha=zone_info.alpha,
-                label=zone_info.name,
-                thickness=2
-            )
-            drawable.draw(img)
-        

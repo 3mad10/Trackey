@@ -3,11 +3,8 @@ import time
 from urllib.parse import urlparse
 from trackey.core.interfaces.source import InputSource
 from trackey.data.schemas.frame import Frame
-from trackey.core.registries.source import SOURCE_REGISTRY
-from trackey.core.register import register_source
 
 
-@register_source("rtsp")
 class RtspSource(InputSource):
     def __init__(self, url: str, **kwargs):
         super().__init__(**kwargs)

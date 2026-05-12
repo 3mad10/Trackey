@@ -1,7 +1,7 @@
 source:
-  type: video
+  type: camera
   params:
-    path: input.mp4
+    index: 0
     width: 1280 # resize before pipeline — all nodes see 1280x720
     height: 720
 
@@ -89,17 +89,5 @@ renderer:
 
 sinks:
   - type: display
-    window_name: Trackey
-    show_zones: true
-
-  - type: recorder
-    path: output.mp4
-
-  - type: stream
-    port: 8080
-
-viewer:
-  type: opencv
-  window_name: Trackey
-  show_zones: true
-  show_lines: true
+    params:
+      window_name: Trackey
