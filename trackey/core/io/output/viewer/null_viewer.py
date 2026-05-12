@@ -1,26 +1,23 @@
-from .base import OutputViewer
-from trackey.data.schemas.frame import Frame
-from trackey.data.schemas.track import Track
-from trackey.data.schemas.view import GlobalStateBox, GlobalStateBoxPlacement
 import cv2
+import logging
 import numpy as np
-from uuid import UUID, uuid4
-from typing import Optional
+from uuid import UUID
+from typing import Union, Optional, List
 
+from trackey.core.interfaces.sink import OutputSink
+from trackey.data.schemas.pipeline import PipelineResult
 
-class NullViewer(OutputViewer):
+logger = logging.getLogger(__name__)
 
-    def open(self) -> bool:
-        return True
-
-    def show(
-        self,
-        frame: Optional[Frame],
-        tracks: list[Track]
-    ):
-        # Intentionally do nothing
+class NullViewer(OutputSink):
+    def __init__(self):
         pass
 
+    def open(self) -> bool:
+        pass
+    
+    def write(self, result: PipelineResult) -> None:
+        pass
 
     def close(self):
         pass

@@ -1,7 +1,4 @@
-import yaml
 import logging
-from pathlib import Path
-from collections import defaultdict, deque
 from typing import List, Tuple, Dict, Optional
 
 from trackey.core.registries.detection import DETECTOR_REGISTRY

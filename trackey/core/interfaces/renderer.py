@@ -1,16 +1,15 @@
 from abc import ABC, abstractmethod
+import numpy as np
 
-from trackey.data.schemas.pipeline import PipelineResult
+from trackey.data.schemas.frame import Frame
+from trackey.core.context import FrameContext
+
 
 class Renderer(ABC):
     @abstractmethod
-    def open(self) -> bool:
+    def initialize(self, frame: Frame) -> None:
         pass
 
     @abstractmethod
-    def write(self, result: PipelineResult) -> None:
-        pass
-
-    @abstractmethod
-    def release(self) -> None:
+    def render(self, ctx: FrameContext) -> np.ndarray:
         pass

@@ -12,5 +12,5 @@ class OutputSink(ABC):
         pass
 
     @abstractmethod
-    def release(self) -> None:
+    def close(self) -> None:
         pass

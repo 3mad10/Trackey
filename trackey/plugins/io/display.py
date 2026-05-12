@@ -1,6 +1,6 @@
-from trackey.core.io.output.display import DisplaySink
 from trackey.plugins.io.sink import SinkPlugin
 from trackey.core.register import register_sink
+from trackey.core.io.output.viewer.opencv_viewer import OpenCVViewer
 
 
 @register_sink("display")
@@ -11,11 +11,8 @@ class DisplaySinkPlugin(SinkPlugin):
         pass
 
     @classmethod
-    def build(cls, cfg: dict) -> DisplaySink:
-        cls.validate(cfg)
+    def build(cls, cfg: dict) -> OpenCVViewer:
         params = cfg.get("params", {})
-        return DisplaySink(
-            window_name=params.get("window_name", "Trackey"),
-            display_width=params.get("display_width"),
-            display_height=params.get("display_height")
+        return OpenCVViewer(
+            window_name=params.get("window_name", "Trackey")
         )
