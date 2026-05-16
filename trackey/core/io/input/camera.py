@@ -8,7 +8,7 @@ class CameraSource(InputSource):
     """
     This class implements the interface InputSource for a webcam input
     """
-    def __init__(self, device_id: int = 0, **kwargs):
+    def __init__(self, index: int = 0, **kwargs):
         """
         Parameters
         ----------
@@ -28,12 +28,16 @@ class CameraSource(InputSource):
         None
         """
         super().__init__(**kwargs)
-        self.device_id = device_id
+        self.index = index
         self.cap = None
 
     def open(self):
-        self.cap = cv2.VideoCapture(self.device_id)
-        self.is_open = True
+        self.cap = cv2.VideoCapture(self.index)
+        if self.cap.isOpened():
+            self.is_open = True
+        else:
+            self.is_open = False
+        return self.is_open
 
     def read(self) -> Frame:
         """
@@ -65,11 +69,15 @@ class CameraSource(InputSource):
             raise RuntimeError("Failed to read frame from webcam")
         # Wrap in your Frame schema
         h, w = frame.shape[:2]
-        return Frame(frame=frame, width=w, height=h)
+        return Frame(frame=frame)
 
     def release(self):
         if self.cap:
             self.cap.release()
+
+    @property
+    def camera_id(self):
+        return str(self.index)
 
 
 if __name__ == "__main__":

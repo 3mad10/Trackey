@@ -54,7 +54,7 @@ class VideoFileSource(InputSource):
             frame = self._resize(frame)
 
         h, w = frame.shape[:2]
-        return Frame(frame=frame, width=w, height=h)
+        return Frame(frame=frame)
 
     def release(self) -> None:
         if self.cap:

@@ -62,7 +62,7 @@ class OpenCVRenderer(Renderer):
     def _draw_tracks(self, img: np.ndarray,
                       ctx: FrameContext) -> None:
         for track in ctx.tracks:
-            if not track.detections:
+            if "detections" not in track:
                 continue
 
             det = track.detections[-1]

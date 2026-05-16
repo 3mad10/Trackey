@@ -132,7 +132,10 @@ class ConditionNode(PipelineNode):
         self._extractor = PathExtractor(self.path)
 
     def process(self, ctx: FrameContext) -> FrameContext:
-        result = self._evaluate(self._extractor.extract(ctx))
+        extracted_ = self._extractor.extract(ctx)
+        if not extracted_:
+            return ctx
+        result = self._evaluate(extracted_)
         return replace(
             ctx,
             active_branch=self.true_output if result else self.false_output

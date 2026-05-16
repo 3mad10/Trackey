@@ -15,7 +15,7 @@ class CameraSourcePlugin(SourcePlugin):
     def build(cls, cfg: dict):
         params = cfg["params"]
         return CameraSource(
-            url=params["index"],
+            index=params["index"],
             width=params.get("width"),
             height=params.get("height")
         )

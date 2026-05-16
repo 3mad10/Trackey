@@ -157,7 +157,7 @@ class Engine:
             self.event_bus.stop()
         self.source.release()
         for sink in self.sinks:
-            sink.release()
+            sink.close()
 
 
 
