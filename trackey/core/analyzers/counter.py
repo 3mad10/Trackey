@@ -70,5 +70,5 @@ class Counter(Analyzer):
                 result[class_name]["peak"] = self.peak_counts[class_name]
             if "cumulative" in self.metrics:
                 result[class_name]["cumulative"] = len(self.unique_tracks[class_name])
-        # print(self.unique_tracks)
+        print(result)
         return result

@@ -7,14 +7,14 @@ source:
 
 scene:
   zones:
-    - name: AreaA
+    - name: Entrance
       polygon:
-        - [0.7,0.3] # zone top left
+        - [0.1,0.3] # zone top left
         - [1.0,0.3] # zone top right
         - [1.0,1.0] # zone buttom right
-        - [0.7,1.0] # zone buttom left
+        - [0.1,1.0] # zone buttom left
 
-      color: [255,0,0]
+      color: [255,0,255]
 
 pipeline:
   nodes:
@@ -47,17 +47,17 @@ pipeline:
     - name: count_condition
       type: condition
       params:
-        path: analytics.people_counter.person.current
-        operator: gt
-        value: 10
+        path: analytics.people_counter.person.cumulative
+        operator: gte
+        threshold: 3
         true_output: publisherA
     - name: publisherA
       type: publisher
       events:
         - type: count_exceeded_event
           extract:
-            count:     analytics.counter.count
-            zone_name: analytics.counter.zone_name
+            count:     analytics.people_counter.person.cumulative
+            zone_name: analytics.people_counter.zone_name
 
   edges:
     - from: detectorA
@@ -77,12 +77,14 @@ pipeline:
 
 
 subscribers:
-  - type: mail
+  # - type: mail
+  #   listen: [count_exceeded_event]
+  #   params:
+  #     sender: mail1
+  #     to: [ops@company.com]
+  #     password: TRACKEY_SMTP_PASSWORD
+  - type: null_subscriber
     listen: [count_exceeded_event]
-    params:
-      sender: mail1
-      to: [ops@company.com]
-      password: TRACKEY_SMTP_PASSWORD
 
 renderer:
     type: opencv

@@ -7,6 +7,7 @@ from typing import Dict, List, Set, Optional
 from trackey.core.interfaces.node import PipelineNode
 from trackey.core.context import FrameContext
 from trackey.core.pipeline.edge import Edge
+from trackey.core.pipeline.constants import SKIP_BRANCH
 
 logger = logging.getLogger(__name__)
 
@@ -78,19 +79,24 @@ class PipelineExecutor:
 
             # handle branch routing
             if out_ctx.active_branch:
-                active   = out_ctx.active_branch
-                inactive = [
-                    c for c in self.out.get(node_name, [])
-                    if c != active
-                ]
-                skipped.update(inactive)
-                next_nodes         = [active]
+                active = out_ctx.active_branch
+                if active == SKIP_BRANCH:
+                    skipped.update(self.out.get(node_name, []))
+                    next_nodes = []
+                else:
+                    inactive = [
+                        c for c in self.out.get(node_name, [])
+                        if c != active
+                    ]
+                    skipped.update(inactive)
+                    next_nodes = [active]
                 results[node_name] = replace(out_ctx, active_branch=None)
             else:
                 next_nodes = [
                     c for c in self.out.get(node_name, [])
                     if c not in skipped
                 ]
+                results[node_name] = out_ctx
 
             # enqueue children whose all parents are done
             for child in next_nodes:
@@ -154,12 +160,20 @@ class PipelineExecutor:
     # ------------------------------------------------------------------ #
 
     def _final_context(self,
-                        results: Dict[str, FrameContext],
-                        fallback: FrameContext) -> FrameContext:
+                    results: Dict[str, FrameContext],
+                    fallback: FrameContext) -> FrameContext:
+        if not results:
+            return fallback
+
+        # terminal = ran AND has no children that also ran
         terminals = [
             name for name in results
-            if not self.out.get(name)
+            if not any(
+                child in results
+                for child in self.out.get(name, [])
+            )
         ]
+
         if not terminals:
             return fallback
         if len(terminals) == 1:
