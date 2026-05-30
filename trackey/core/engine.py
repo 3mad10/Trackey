@@ -166,6 +166,7 @@ if __name__ == '__main__':
     from trackey.plugins.io.video import VideoSourcePlugin
     from trackey.plugins.io.display import DisplaySinkPlugin
     from trackey.plugins.subscribers.mail import MailSubscriberPlugin
+    from trackey.plugins.subscribers.null import NullSubscriberPlugin
     from trackey.core.io.output.viewer import OpenCVViewer
     from trackey.core.detectors import YoloDetector
     from trackey.core.trackers import DeepSortTracker

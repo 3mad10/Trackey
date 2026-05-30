@@ -3,7 +3,7 @@ from typing import Any
 
 class PathExtractor:
     def __init__(self, path: str):
-        self.path = path  # "analytics.counter.count.car"
+        self.path = path
         self.parts = path.split(".")
 
     def extract(self, ctx) -> Any:

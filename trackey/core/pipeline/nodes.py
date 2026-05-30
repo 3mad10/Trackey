@@ -11,6 +11,7 @@ from trackey.data.schemas.event import EventDefinition
 from trackey.core.events.bus import EventBus
 from trackey.core.utils.path import PathExtractor
 from trackey.core.interfaces import *
+from trackey.core.pipeline.constants import SKIP_BRANCH
 
 
 class ZoneFilterMixin:
@@ -56,6 +57,9 @@ class AnalyzerNode(PipelineNode, ZoneFilterMixin):
     def process(self, ctx: FrameContext) -> FrameContext:
         tracks = self.filter_tracks(ctx)
         result = self.analyzer.analyze(tracks)
+        if self.zone_name:
+            result["zone_name"] = self.zone_name
+        # print(f"result : {result}")
         return ctx.with_analytics(self.name, result)
     
     def get_inputs(self) -> List[str]:
@@ -70,7 +74,7 @@ class SpatialIndexNode(PipelineNode):
 
     def process(self, ctx: FrameContext) -> FrameContext:
         memberships = ZoneMemberships.build(ctx.tracks, self.scene)
-        return replace(ctx, zone_memberships=memberships)
+        return ctx.with_memberships(memberships)
     
     def get_inputs(self) -> List[str]:
         return ["tracks"]
@@ -108,7 +112,6 @@ class PublisherNode(PipelineNode):
         self.event_bus   = event_bus
 
     def process(self, ctx: FrameContext) -> FrameContext:
-        # no condition check — DAG already decided we should run
         for definition in self.definitions:
             event = definition.build(ctx)
             self.event_bus.publish(event)
@@ -124,7 +127,7 @@ class PublisherNode(PipelineNode):
 class ConditionNode(PipelineNode):
     path:         str
     operator:     str
-    value:        Any
+    threshold:    Any
     true_output:  str
     false_output: Optional[str] = None
 
@@ -132,14 +135,12 @@ class ConditionNode(PipelineNode):
         self._extractor = PathExtractor(self.path)
 
     def process(self, ctx: FrameContext) -> FrameContext:
-        extracted_ = self._extractor.extract(ctx)
-        if not extracted_:
-            return ctx
-        result = self._evaluate(extracted_)
-        return replace(
-            ctx,
-            active_branch=self.true_output if result else self.false_output
-        )
+        extracted = self._extractor.extract(ctx)
+        if extracted is None:
+            return replace(ctx, active_branch=SKIP_BRANCH)
+        if self._evaluate(extracted):
+            return replace(ctx, active_branch=self.true_output)
+        return replace(ctx, active_branch=self.false_output or SKIP_BRANCH)
     
     def get_inputs(self) -> List[str]:
         return [self.path]
@@ -159,7 +160,7 @@ class ConditionNode(PipelineNode):
         op = ops.get(self.operator)
         if not op:
             raise ValueError(f"Unknown operator: {self.operator}")
-        return op(value, self.value)
+        return op(value, self.threshold)
     
 
 @dataclass
