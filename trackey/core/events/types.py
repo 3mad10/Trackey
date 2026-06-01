@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional, Union, List
 from dataclasses import dataclass
 from uuid import UUID
 

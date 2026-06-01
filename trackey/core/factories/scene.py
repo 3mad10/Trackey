@@ -18,9 +18,8 @@ class SceneBuilder(Builder):
                 - [p2x,p2y] \
                 - [p3x,p3y] \
                 - [p4x,p4y] \
-              <You Can Optionally add the following> \
-              color: [b, g, r] \
     "
+
     def __init__(self, cfg_path: str):
         self.cfg = self._load_yaml(cfg_path)
 
@@ -52,11 +51,11 @@ class SceneBuilder(Builder):
         if "polygon" not in zone_cfg:
             raise ValueError(f"[SceneBuilder] Zone must contain a polygon \
             {self.SCENE_CFG_FORMAT}")
+
         return Zone.model_validate(
             {
                 'name': zone_cfg['name'],
-                'polygon': Polygon(points=zone_cfg["polygon"]),
-                'color': zone_cfg['color']
+                'polygon': Polygon(points=zone_cfg["polygon"])
             }
         )
     
@@ -66,5 +65,5 @@ class SceneBuilder(Builder):
         if "start" not in line_cfg:
             raise ValueError("[SceneBuilder] Line must contain start tuple")
         if "end" not in line_cfg:
-            raise ValueError("[SceneBuilder] Line must contain start tuple")
+            raise ValueError("[SceneBuilder] Line must contain end tuple")
         return Line(**line_cfg)

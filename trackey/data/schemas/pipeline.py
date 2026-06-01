@@ -45,6 +45,6 @@ class PipelineResult(BaseModel):
             events=ctx.events,
             metadata=ctx.metadata,
             rendered_frame=rendered,
-            raw_frame=ctx.frame      # Frame object, not np.ndarray
+            raw_frame=ctx.frame
         )
     
