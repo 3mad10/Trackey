@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import List, Tuple
+from pydantic import BaseModel, ConfigDict
+from typing import List, Tuple, Optional
 
 
 class Point(BaseModel):
@@ -40,8 +40,8 @@ class Polygon(BaseModel):
 class Line(BaseModel):
     """Line segment"""
     name: str
-    start: Tuple[float, float]  # (x, y) normalized
-    end: Tuple[float, float]    # (x, y) normalized
+    start: Tuple[float, float]
+    end: Tuple[float, float]
     
     def crossed(self, prev_point: Tuple[float, float], 
                 curr_point: Tuple[float, float]) -> bool:
@@ -64,11 +64,9 @@ class Line(BaseModel):
 
 class Zone(BaseModel):
     """Named region for analysis"""
+    model_config = ConfigDict(extra="forbid")
     name: str
     polygon: Polygon
-    color: Tuple[int,int,int] = (128,128,128)
-    alpha: float = 0.2
-    filled: bool = True
     
     def contains(self, point: Tuple[float, float]) -> bool:
         """Check if point is in zone"""

@@ -14,8 +14,6 @@ scene:
         - [1.0,1.0] # zone buttom right
         - [0.1,1.0] # zone buttom left
 
-      color: [255,0,255]
-
 pipeline:
   nodes:
     - name: detectorA
@@ -56,8 +54,8 @@ pipeline:
       events:
         - type: count_exceeded_event
           extract:
-            count:     analytics.people_counter.person.cumulative
-            zone_name: analytics.people_counter.zone_name
+            count:        analytics.people_counter.person.cumulative
+            zone_name:    analytics.people_counter.zone_name
 
   edges:
     - from: detectorA
@@ -87,7 +85,76 @@ subscribers:
     listen: [count_exceeded_event]
 
 renderer:
-    type: opencv
+  type: opencv
+  styles:
+    detections:
+      show:       true
+      show_bbox:  false
+      show_label: true
+      bbox:
+        color:     [255, 255, 255]
+        thickness: 4
+      label:
+        color:    [0, 0, 0]
+        font_size: 0.6
+
+    tracks:
+      show:       true
+      show_bbox:  true
+      show_id:    true
+      show_trail: true
+      bbox:
+        color:     [255, 255, 255]
+        thickness: 4
+      id_label:
+        color:     [255, 255, 255]
+        font_size: 0.6
+      trail:
+        color:      [255, 165, 0]
+        max_points: 20
+        thickness:  2
+        fade_mode:  alpha
+        min_alpha:  0.1
+
+    zones:
+      show:         true
+      Entrance:
+        show:       true
+        show_label: true
+        polygon:
+          color:     [255, 255, 0]
+          filled:    true
+          alpha:     0.2
+          thickness: 2
+        label:
+          color:     [255, 255, 255]
+          font_size: 0.6
+    
+    lines:
+      show:           true
+      StartLine:
+        show:         true
+        show_label:   true
+        line:
+          color:     [255, 255, 0]
+        label:
+          color:     [0, 255, 255]
+
+
+    analytics:
+      show: false
+      people_counter:
+        show:      false
+        position:  [0.1, 0.3]
+        show_keys: []
+        panel:
+          color:  [0, 0, 0]
+          alpha:  0.6
+          filled: true
+        text:
+          color:     [255, 255, 255]
+          font_size: 0.5
+
 
 sinks:
   - type: display
