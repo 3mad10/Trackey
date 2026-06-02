@@ -16,9 +16,6 @@ class Track(BaseModel):
     age: int = Field(ge=0, default=1)
     class_name: str
     last_seen: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    view_track: bool = True
-    metadata: Optional[dict] = None
-    features: Optional[List[float]] = None
 
     @property
     def trajectory(self) -> List[Tuple[float, float]]:

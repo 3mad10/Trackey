@@ -2,8 +2,6 @@ import cv2
 import logging
 import numpy as np
 from typing import Optional, List, Any, Tuple
-from PIL import Image, ImageDraw, ImageFont
-import numpy as np
 
 from trackey.core.pipeline.constants import BASE_HEIGHT
 from trackey.core.context import FrameContext
@@ -31,14 +29,26 @@ logger = logging.getLogger(__name__)
 
 @register_renderer("opencv")
 class OpenCVRenderer(Renderer):
+    """
+    All coordinates are normalized (0.0-1.0).
+
+    Drawables store normalized coords.
+    Draw methods convert to pixel using self._w / self._h.
+
+    Scene drawables are pre-built at initialize() from normalized
+    zone/line geometry - no per-frame conversion needed.
+
+    Dynamic drawables (detections, tracks) convert bbox pixel coords
+    back to normalized before storing so the same draw path is used.
+    """
 
     def __init__(self,
                  scene:  Optional[Scene] = None,
                  styles: RendererStyles  = None):
         self.scene  = scene
         self.styles = styles or RendererStyles()
-        self._w:    int  = 0
-        self._h:    int  = 0
+        self._w:    int = 0
+        self._h:    int = 0
         self._scene_drawables: List = []
 
     # ------------------------------------------------------------------ #
@@ -46,6 +56,11 @@ class OpenCVRenderer(Renderer):
     # ------------------------------------------------------------------ #
 
     def initialize(self, frame: Frame) -> None:
+        """
+        Called once with the first frame.
+        Stores resolution and pre-builds static scene drawables.
+        Zone/line points are already normalized - stored as-is.
+        """
         self._w = frame.width
         self._h = frame.height
         if self.scene:
@@ -54,14 +69,38 @@ class OpenCVRenderer(Renderer):
     def render(self, ctx: FrameContext) -> np.ndarray:
         img = ctx.frame.frame.copy()
         self._draw_scene(img)
-        # TODO
-        # self._draw_detections(img, ctx)
-        # self._draw_tracks(img, ctx)
-        # self._draw_analytics(img, ctx)
+        self._draw_detections(img, ctx)
+        self._draw_tracks(img, ctx)
+        self._draw_analytics(img, ctx)
         return img
 
     # ------------------------------------------------------------------ #
-    # Scene (static — pre-built at initialize)                            #
+    # Coordinate helpers                                                   #
+    # ------------------------------------------------------------------ #
+
+    def _to_px(self, x: float, y: float) -> Tuple[int, int]:
+        """Normalized -> pixel."""
+        return int(x * self._w), int(y * self._h)
+
+    def _bbox_px_to_norm(self, bbox: Tuple[int, int, int, int]
+                          ) -> Tuple[float, float, float, float]:
+        """Pixel xyxy -> normalized xyxy."""
+        x1, y1, x2, y2 = bbox
+        return (x1 / self._w, y1 / self._h,
+                x2 / self._w, y2 / self._h)
+
+    def _norm_rect_to_points(self, x: float, y: float,
+                               w: float, h: float) -> List[Tuple[float, float]]:
+        """Normalized rect -> normalized polygon points."""
+        return [
+            (x,     y),
+            (x + w, y),
+            (x + w, y + h),
+            (x,     y + h),
+        ]
+
+    # ------------------------------------------------------------------ #
+    # Scene - pre-built normalized drawables                               #
     # ------------------------------------------------------------------ #
 
     def _draw_scene(self, img: np.ndarray) -> None:
@@ -75,57 +114,71 @@ class OpenCVRenderer(Renderer):
         return drawables
 
     def _build_zone_drawables(self) -> List:
+        """
+        Zone polygon points are already normalized.
+        Store as-is - no conversion at initialize or render time.
+        """
         drawables = []
         if not self.styles.zones.show:
             return drawables
 
         for zone in self.scene.zones.values():
-            zone_style: Optional[ZoneStyle] = self.styles.zones.per_zone[zone.name]
+            zone_style: Optional[ZoneStyle] = self.styles.zones.per_zone.get(
+                zone.name, self.styles.zones.default
+            )
             if zone_style is None or not zone_style.show:
                 continue
 
-            polygon_style = zone_style.polygon
-            text_style = zone_style.label
             drawables.append(PolygonDrawable(
-                points=zone.polygon.points,
-                style=polygon_style
+                points=zone.polygon.points,   # already normalized
+                style=zone_style.polygon,
             ))
+
             if zone_style.show_label:
+                lx, ly = zone.polygon.points[0]
                 drawables.append(TextDrawable(
                     text=zone.name,
-                    position=zone.polygon.points[0],
-                    style=text_style
+                    position=(lx, ly - 0.02),
+                    style=zone_style.label,
                 ))
+
         return drawables
 
     def _build_line_drawables(self) -> List:
+        """
+        Line start/end points are already normalized.
+        Store as-is.
+        """
         drawables = []
         if not self.styles.lines.show:
             return drawables
 
         for line in self.scene.lines.values():
-            scene_line_style: Optional[SceneLineStyle] = self.styles.lines.per_line[line.name]
-            if line_style is None or not scene_line_style.show:
+            scene_line_style: Optional[SceneLineStyle] = self.styles.lines.per_line.get(
+                line.name, self.styles.lines.default
+            )
+            if scene_line_style is None or not scene_line_style.show:
                 continue
 
-            line_style = scene_line_style.line
-            text_style = scene_line_style.label
-
             drawables.append(LineDrawable(
-                start=line.start,
-                end=line.end,
-                style=line_style
+                start=line.start,    # already normalized
+                end=line.end,        # already normalized
+                style=scene_line_style.line,
             ))
+
             if scene_line_style.show_label:
+                mx = (line.start[0] + line.end[0]) / 2
+                my = (line.start[1] + line.end[1]) / 2
                 drawables.append(TextDrawable(
                     text=line.name,
-                    position=line.start,
-                    style=text_style
+                    position=(mx, my - 0.02),
+                    style=scene_line_style.label,
                 ))
+
         return drawables
 
     # ------------------------------------------------------------------ #
-    # Detections (dynamic)                                                 #
+    # Detections - convert pixel bbox to normalized                        #
     # ------------------------------------------------------------------ #
 
     def _draw_detections(self, img: np.ndarray,
@@ -138,27 +191,25 @@ class OpenCVRenderer(Renderer):
             if det.bbox is None:
                 continue
 
-            bbox = det.bbox.to_pixel_xyxy(self._w, self._h)
+            px_bbox   = det.bbox.to_pixel_xyxy(self._w, self._h)
+            norm_bbox = self._bbox_px_to_norm(px_bbox)
+            x1, y1, _, _ = norm_bbox
 
             if style.show_bbox:
                 self._draw(BBoxDrawable(
-                    bbox=bbox,
-                    color=style.bbox.color,
-                    thickness=style.bbox.thickness,
+                    bbox=norm_bbox,
+                    style=style.bbox,
                 ), img)
 
             if style.show_label and det.class_name:
-                label = f"{det.class_name} {det.confidence:.2f}"
                 self._draw(TextDrawable(
-                    text=label,
-                    position=(bbox[0], bbox[1] - 10),
-                    color=style.label.color,
-                    font_scale=style.label.font_size,
-                    thickness=style.label.thickness,
+                    text=f"{det.class_name} {det.confidence:.2f}",
+                    position=(x1, y1 - 0.015),
+                    style=style.label,
                 ), img)
 
     # ------------------------------------------------------------------ #
-    # Tracks (dynamic)                                                     #
+    # Tracks - convert pixel bbox to normalized                            #
     # ------------------------------------------------------------------ #
 
     def _draw_tracks(self, img: np.ndarray,
@@ -168,71 +219,61 @@ class OpenCVRenderer(Renderer):
             return
 
         for track in ctx.tracks:
-            if not track.detections:
+            if not track.history:
                 continue
 
-            det = track.detections[-1]
-            if det.bbox is None:
-                continue
+            det_bbox = track.history[-1]
 
-            bbox = det.bbox.to_pixel_xyxy(self._w, self._h)
+            px_bbox      = det_bbox.to_pixel_xyxy(self._w, self._h)
+            norm_bbox    = self._bbox_px_to_norm(px_bbox)
+            x1, y1, _, _ = norm_bbox
 
             if style.show_bbox:
                 self._draw(BBoxDrawable(
-                    bbox=bbox,
-                    color=style.bbox.color,
-                    thickness=style.bbox.thickness,
+                    bbox=norm_bbox,
+                    style=style.bbox,
                 ), img)
 
             if style.show_id:
                 self._draw(TextDrawable(
                     text=f"ID: {str(track.id)[:8]}",
-                    position=(bbox[0], bbox[1] - 10),
-                    color=style.id_label.color,
-                    font_scale=style.id_label.font_size,
-                    thickness=style.id_label.thickness,
+                    position=(x1, y1 - 0.015),
+                    style=style.id_label,
                 ), img)
 
             if style.show_trail:
                 self._draw_trail(track, style.trail, img)
 
-            if det.keypoints:
-                keypoints = det.keypoints.to_pixel_xy(self._w, self._h)
-                self._draw(KeypointsDrawable(keypoints), img)
-
     def _draw_trail(self, track, style, img: np.ndarray) -> None:
+        # bbox.cx / cy are already normalized center coords
         points = [
-            (int(d.bbox.cx * self._w), int(d.bbox.cy * self._h))
-            for d in track.detections
-            if d.bbox
+            (bbox.cx, bbox.cy)
+            for bbox in track.history
         ]
         if len(points) < 2:
             return
 
         n = len(points)
         for i in range(1, n):
-            t     = i / (n - 1)
+            t            = i / (n - 1)
             color, alpha = self._trail_segment_style(style, t)
+            p0           = self._to_px(*points[i - 1])
+            p1           = self._to_px(*points[i])
 
             if alpha < 1.0:
                 overlay = img.copy()
-                cv2.line(overlay, points[i - 1], points[i],
-                         color, style.thickness)
+                cv2.line(overlay, p0, p1, color, style.thickness)
                 cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0, img)
             else:
-                cv2.line(img, points[i - 1], points[i],
-                         color, style.thickness)
+                cv2.line(img, p0, p1, color, style.thickness)
 
     def _trail_segment_style(self, style,
                               t: float) -> Tuple[Tuple, float]:
-        """Return (color, alpha) for trail segment at position t (0=tail, 1=head)."""
         if style.fade_mode == TrailFadeMode.NONE:
             return style.color, style.alpha
-
         if style.fade_mode == TrailFadeMode.ALPHA:
             alpha = style.min_alpha + t * (style.alpha - style.min_alpha)
             return style.color, alpha
-
         # GRADIENT
         color = tuple(
             int(style.tail_color[c] + t * (style.color[c] - style.tail_color[c]))
@@ -241,7 +282,7 @@ class OpenCVRenderer(Renderer):
         return color, style.alpha
 
     # ------------------------------------------------------------------ #
-    # Analytics (dynamic)                                                  #
+    # Analytics                                                            #
     # ------------------------------------------------------------------ #
 
     def _draw_analytics(self, img: np.ndarray,
@@ -250,63 +291,51 @@ class OpenCVRenderer(Renderer):
         if not analytics_style.show:
             return
 
+        auto_y = 0.05  # normalized auto-stack starting y
+
         for source, data in ctx.analytics.items():
-            panel_style: Optional[PanelStyle] = analytics_style.for_panel(source)
+            panel_style: Optional[PanelStyle] = analytics_style.panels.get(source)
             if panel_style is None or not panel_style.show:
                 continue
             if not isinstance(data, dict):
                 continue
-            self._draw_panel(source, panel_style, data, img)
 
-    def _draw_panel(self, source: str,
-                    style: PanelStyle,
+            position = panel_style.position or (0.02, auto_y)
+            self._draw_panel(panel_style, data, img, position)
+
+            line_count = len(panel_style.show_keys) or len(data)
+            auto_y    += line_count * 0.04 + 0.02
+
+    def _draw_panel(self, style: PanelStyle,
                     data: dict,
-                    img: np.ndarray) -> None:
-        x = int(style.position[0] * self._w)
-        y = int(style.position[1] * self._h)
+                    img: np.ndarray,
+                    position: Tuple[float, float]) -> None:
+        px, py = position   # normalized
 
         keys  = list(style.show_keys) if style.show_keys else list(data.keys())
         lines = [f"{k}: {data[k]}" for k in keys if k in data]
         if not lines:
             return
 
-        # draw background panel if filled
-        if style.panel.filled and lines:
-            line_height = style.text.font_size * 30 + 4
-            panel_h     = int(len(lines) * line_height + style.padding * 2)
-            max_text_w  = max(len(l) for l in lines) * int(style.text.font_size * 12)
-            panel_w     = max_text_w + style.padding * 2
+        line_h_norm = style.text.font_size * 0.04
+        padding_n   = 0.01
+
+        if style.panel.filled:
+            panel_w = max(len(l) for l in lines) * style.text.font_size * 0.012
+            panel_h = len(lines) * line_h_norm + padding_n * 2
             self._draw(PolygonDrawable(
-                points=self._pixel_rect_to_normalized(
-                    x, y, panel_w, panel_h
-                ),
-                color=style.panel.color,
-                filled=True,
-                alpha=style.panel.alpha,
-                thickness=0,
+                points=self._norm_rect_to_points(px, py, panel_w, panel_h),
+                style=style.panel,
             ), img)
 
-        # draw text lines
-        y_offset = y + style.padding
+        y_offset = py + padding_n
         for line in lines:
             self._draw(TextDrawable(
                 text=line,
-                position=(x + style.padding, y_offset),
-                color=style.text.color,
-                font_scale=style.text.font_size,
-                thickness=style.text.thickness,
+                position=(px + padding_n, y_offset),
+                style=style.text,
             ), img)
-            y_offset += int(style.text.font_size * 30 + 4)
-
-    def _pixel_rect_to_normalized(self, x: int, y: int,
-                                   w: int, h: int) -> List:
-        """Convert pixel rect to normalized points for PolygonDrawable."""
-        return [
-            (x / self._w,       y / self._h),
-            ((x + w) / self._w, y / self._h),
-            ((x + w) / self._w, (y + h) / self._h),
-            (x / self._w,       (y + h) / self._h),
-        ]
+            y_offset += line_h_norm
 
     # ------------------------------------------------------------------ #
     # Draw dispatch                                                        #
@@ -328,13 +357,20 @@ class OpenCVRenderer(Renderer):
                 f"[OpenCVRenderer] No handler for {type(drawable).__name__}"
             )
 
+    # ------------------------------------------------------------------ #
+    # Primitive draw methods - all accept normalized, convert to pixel    #
+    # ------------------------------------------------------------------ #
+
     def _draw_bbox(self, d: BBoxDrawable, img: np.ndarray) -> None:
-        x1, y1, x2, y2 = d.bbox
-        cv2.rectangle(img, (x1, y1), (x2, y2), d.color, d.thickness)
+        x1, y1, x2, y2 = d.bbox           # normalized
+        p1 = self._to_px(x1, y1)
+        p2 = self._to_px(x2, y2)
+        cv2.rectangle(img, p1, p2,
+                      d.style.color, d.style.thickness)
 
     def _draw_text(self, d: TextDrawable, img: np.ndarray) -> None:
+        x, y       = self._to_px(*d.position)        # normalized -> pixel
         font_scale = d.style.font_size * self._h / BASE_HEIGHT
-        x, y = int(d.position[0]*self._w), int(d.position[1]*self._h)
         cv2.putText(
             img, d.text, (x, y),
             cv2.FONT_HERSHEY_SIMPLEX,
@@ -343,10 +379,7 @@ class OpenCVRenderer(Renderer):
         )
 
     def _draw_polygon(self, d: PolygonDrawable, img: np.ndarray) -> None:
-        pixel_points = [
-            (int(x * self._w), int(y * self._h))
-            for x, y in d.points
-        ]
+        pixel_points = [self._to_px(x, y) for x, y in d.points]
         if not pixel_points:
             return
 
@@ -355,28 +388,23 @@ class OpenCVRenderer(Renderer):
         if d.style.filled:
             overlay = img.copy()
             cv2.fillPoly(overlay, [pts], d.style.color)
-            cv2.addWeighted(overlay, d.style.alpha, img, 1 - d.style.alpha, 0, img)
+            cv2.addWeighted(
+                overlay, d.style.alpha,
+                img,     1 - d.style.alpha,
+                0, img,
+            )
         else:
-            cv2.polylines(img, [pts], True, d.style.color, d.style.thickness)
-        
+            cv2.polylines(img, [pts], True,
+                          d.style.color, d.style.thickness)
 
     def _draw_line(self, d: LineDrawable, img: np.ndarray) -> None:
-        start = (int(d.start[0] * self._w), int(d.start[1] * self._h))
-        end   = (int(d.end[0]   * self._w), int(d.end[1]   * self._h))
-        cv2.line(img, start, end, d.color, d.thickness)
-
-        if d.label:
-            mid         = ((start[0] + end[0]) // 2,
-                           (start[1] + end[1]) // 2)
-            label_color = getattr(d, "label_color", d.color)
-            cv2.putText(
-                img, d.label,
-                (mid[0], mid[1] - 8),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.55, label_color, 2, cv2.LINE_AA,
-            )
+        start = self._to_px(*d.start)    # normalized -> pixel
+        end   = self._to_px(*d.end)      # normalized -> pixel
+        cv2.line(img, start, end,
+                 d.style.color, d.style.thickness)
 
     def _draw_keypoints(self, d: KeypointsDrawable,
                          img: np.ndarray) -> None:
+        # keypoints come from to_pixel_xy() - already pixel coords
         for pt in d.keypoints:
             cv2.circle(img, pt, 3, d.color, -1)
