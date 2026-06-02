@@ -92,8 +92,8 @@ renderer:
       show_bbox:  false
       show_label: true
       bbox:
-        color:     [255, 255, 255]
-        thickness: 4
+        color:     [255, 0, 255]
+        thickness: 1
       label:
         color:    [0, 0, 0]
         font_size: 0.6
@@ -102,17 +102,17 @@ renderer:
       show:       true
       show_bbox:  true
       show_id:    true
-      show_trail: true
+      show_trail: false
       bbox:
-        color:     [255, 255, 255]
-        thickness: 4
+        color:     [255, 111, 0]
+        thickness: 1
       id_label:
         color:     [255, 255, 255]
         font_size: 0.6
       trail:
-        color:      [255, 165, 0]
+        color:      [0, 0, 255]
         max_points: 20
-        thickness:  2
+        thickness:  4
         fade_mode:  alpha
         min_alpha:  0.1
 
