@@ -97,9 +97,11 @@ class RendererBuilder(Builder):
             show_bbox=cfg.get("show_bbox", defaults.show_bbox),
             show_id=cfg.get("show_id", defaults.show_id),
             show_trail=cfg.get("show_trail", defaults.show_trail),
-            bbox=BBoxStyle(**cfg["bbox"])          if "bbox"     in cfg else BBoxStyle(),
-            id_label=TextStyle(**cfg["id_label"])  if "id_label" in cfg else TextStyle(),
-            trail=TrailStyle(**trail_cfg)          if trail_cfg  else TrailStyle(),
+            show_label=cfg.get("show_label", defaults.show_label),
+            bbox=BBoxStyle(**cfg["bbox"])           if "bbox"     in cfg else BBoxStyle(),
+            id_label=TextStyle(**cfg["id_label"])   if "id_label" in cfg else TextStyle(),
+            label=TextStyle(**cfg["label"])         if "label" in cfg else TextStyle(),
+            trail=TrailStyle(**trail_cfg)           if trail_cfg  else TrailStyle(),
         )
 
     def _build_zones_style(self, cfg: dict) -> ZonesStyles:
