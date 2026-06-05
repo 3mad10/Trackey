@@ -83,14 +83,15 @@ subscribers:
   #     password: TRACKEY_SMTP_PASSWORD
   - type: null_subscriber
     listen: [count_exceeded_event]
+    throttle_seconds: 10
 
 renderer:
   type: opencv
   styles:
     detections:
-      show:       true
+      show:       false
       show_bbox:  false
-      show_label: true
+      show_label: false
       bbox:
         color:     [255, 0, 255]
         thickness: 1
@@ -103,11 +104,15 @@ renderer:
       show_bbox:  true
       show_id:    true
       show_trail: false
+      show_label: true
       bbox:
         color:     [255, 111, 0]
         thickness: 1
       id_label:
-        color:     [255, 255, 255]
+        color:     [0, 0, 0]
+        font_size: 0.6
+      label:
+        color:    [0, 255, 0]
         font_size: 0.6
       trail:
         color:      [0, 0, 255]
@@ -127,7 +132,7 @@ renderer:
           alpha:     0.2
           thickness: 2
         label:
-          color:     [255, 255, 255]
+          color:     [0, 0, 0]
           font_size: 0.6
     
     lines:
@@ -139,7 +144,6 @@ renderer:
           color:     [255, 255, 0]
         label:
           color:     [0, 255, 255]
-
 
     analytics:
       show: false
@@ -154,7 +158,6 @@ renderer:
         text:
           color:     [255, 255, 255]
           font_size: 0.5
-
 
 sinks:
   - type: display

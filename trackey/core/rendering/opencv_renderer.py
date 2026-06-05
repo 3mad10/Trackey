@@ -194,7 +194,7 @@ class OpenCVRenderer(Renderer):
             px_bbox   = det.bbox.to_pixel_xyxy(self._w, self._h)
             norm_bbox = self._bbox_px_to_norm(px_bbox)
             x1, y1, _, _ = norm_bbox
-
+            
             if style.show_bbox:
                 self._draw(BBoxDrawable(
                     bbox=norm_bbox,
@@ -226,7 +226,6 @@ class OpenCVRenderer(Renderer):
 
             px_bbox      = det_bbox.to_pixel_xyxy(self._w, self._h)
             norm_bbox    = self._bbox_px_to_norm(px_bbox)
-            x1, y1, _, _ = norm_bbox
 
             if style.show_bbox:
                 self._draw(BBoxDrawable(
@@ -235,10 +234,19 @@ class OpenCVRenderer(Renderer):
                 ), img)
 
             if style.show_id:
+                anchor_x, anchor_y = self._bbox_anchor_top_left(norm_bbox)
                 self._draw(TextDrawable(
                     text=f"ID: {str(track.id)[:8]}",
-                    position=(x1, y1 - 0.015),
+                    position=(anchor_x, anchor_y - 0.015),
                     style=style.id_label,
+                ), img)
+            
+            if style.show_label:
+                anchor_x, anchor_y = self._bbox_anchor_top_left(norm_bbox)
+                self._draw(TextDrawable(
+                    text=f"class: {str(track.class_name)[:8]}",
+                    position=(anchor_x, anchor_y - 0.045),
+                    style=style.label,
                 ), img)
 
             if style.show_trail:
@@ -408,3 +416,10 @@ class OpenCVRenderer(Renderer):
         # keypoints come from to_pixel_xy() - already pixel coords
         for pt in d.keypoints:
             cv2.circle(img, pt, 3, d.color, -1)
+    
+    # ------------------------------------------------------------------ #
+    # Anchors helpers                                                    #
+    # ------------------------------------------------------------------ #
+    def _bbox_anchor_top_left(self, bbox):
+        x1, y1, _, _ = bbox
+        return x1, y1

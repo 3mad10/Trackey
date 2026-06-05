@@ -1,8 +1,10 @@
 import logging
+
 from trackey.core.factories.builder import Builder
 from trackey.core.events.bus import EventBus
 from trackey.core.registries.subscriber import SUBSCRIBER_REGISTRY
 from trackey.core.registries.event import EVENT_REGISTRY
+from trackey.core.events.throttle import ThrottledSubscriber
 
 logger = logging.getLogger(__name__)
 
@@ -59,19 +61,22 @@ class EventBusBuilder(Builder):
                     f"subscribed to '{event_name}'"
                 )
 
-    def _build_subscriber(self, sub_cfg: dict):
-        sub_type = sub_cfg["type"]
+    def _build_subscriber(self, sub_cfg: dict) -> ThrottledSubscriber:
+        sub_type         = sub_cfg["type"]
+        throttle_seconds = sub_cfg.get("throttle_seconds", 0.0)
+
         plugin_cls = SUBSCRIBER_REGISTRY.get(sub_type)
-
         if not plugin_cls:
-
             raise ValueError(
-                f"[EventBusBuilder] Unsupported source type: {sub_type}. "
+                f"[EventBusBuilder] Unknown subscriber type: '{sub_type}'. "
                 f"Available: {list(SUBSCRIBER_REGISTRY.keys())}"
             )
 
         plugin_cls.validate(sub_cfg)
-        return plugin_cls.build(sub_cfg)
+        subscriber = plugin_cls.build(sub_cfg)
+
+        # always wrap — ThrottledSubscriber with 0.0 is transparent
+        return ThrottledSubscriber(subscriber, throttle_seconds)
 
     # ------------------------------------------------------------------ #
     # Validation                                                         #

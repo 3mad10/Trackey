@@ -93,10 +93,12 @@ class TrackStyle:
     show:       bool        = True
     bbox:       BBoxStyle   = field(default_factory=BBoxStyle)
     id_label:   TextStyle   = field(default_factory=TextStyle)
+    label:      TextStyle   = field(default_factory=TextStyle)
     trail:      TrailStyle  = field(default_factory=TrailStyle)
     show_bbox:  bool        = True
     show_id:    bool        = True
     show_trail: bool        = True
+    show_label: bool        = True
 
 @dataclass(frozen=True)
 class ZoneStyle:
