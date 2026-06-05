@@ -172,6 +172,7 @@ if __name__ == '__main__':
     from trackey.core.trackers import DeepSortTracker
     from trackey.core.analyzers import Counter
     from trackey.core.rendering.opencv_renderer import OpenCVRenderer
+    from trackey.core.events.types import CountExceededEvent
     # scene = SceneBuilder(cfg_path="base_pipeline.yaml").build()
     # pipeline_builder = PipelineBuilder(cfg_path="base_pipeline.yaml", scene=scene)
     # pipeline = PipelineExecutor(pipeline_builder.build())

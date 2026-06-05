@@ -47,7 +47,7 @@ pipeline:
       params:
         path: analytics.people_counter.person.cumulative
         operator: gte
-        threshold: 3
+        threshold: 2
         true_output: publisherA
     - name: publisherA
       type: publisher
@@ -75,12 +75,13 @@ pipeline:
 
 
 subscribers:
-  # - type: mail
-  #   listen: [count_exceeded_event]
-  #   params:
-  #     sender: mail1
-  #     to: [ops@company.com]
-  #     password: TRACKEY_SMTP_PASSWORD
+  - type: mail
+    listen: [count_exceeded_event]
+    params:
+      sender: mail1
+      to: [mail1, mail2, emd9810@gmail.com]
+      password_env: TRACKEY_SMTP_PASSWORD
+      throttle_seconds: 98
   - type: null_subscriber
     listen: [count_exceeded_event]
     throttle_seconds: 10
