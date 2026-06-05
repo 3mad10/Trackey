@@ -26,12 +26,12 @@ class MailSubscriberPlugin(SubscriberPlugin):
             raise ValueError(
                 "[MailSubscriberPlugin] Missing required param 'sender'"
             )
-        if "password" not in params:
+        if "password_env" not in params:
             raise ValueError(
-                "[MailSubscriberPlugin] Missing 'password'.\n"
+                "[MailSubscriberPlugin] Missing 'password_env'.\n"
                 "Set the environment variable and reference it:\n"
                 "params:\n"
-                "  password: TRACKEY_SMTP_PASSWORD\n"
+                "  password_env: TRACKEY_SMTP_PASSWORD\n"
                 "Then: export TRACKEY_SMTP_PASSWORD=yourpassword\n"
             )
 
@@ -39,7 +39,7 @@ class MailSubscriberPlugin(SubscriberPlugin):
     def build(cls, cfg: dict) -> MailSubscriber:
         cls.validate(cfg)
         params = cfg.get("params", {})
-        password_env = params.get("password")
+        password_env = params.get("password_env")
         password = os.environ.get(password_env)
         if not password:
             raise ValueError(
@@ -51,5 +51,5 @@ class MailSubscriberPlugin(SubscriberPlugin):
             sender=params["sender"],
             smtp_host=params.get("smtp_host", "smtp.gmail.com"),
             smtp_port=params.get("smtp_port", 587),
-            password=params.get("password")
+            password=password
         )
