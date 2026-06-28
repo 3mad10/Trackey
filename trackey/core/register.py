@@ -7,12 +7,14 @@ from trackey.core.registries.source     import SOURCE_REGISTRY
 from trackey.core.registries.sink       import SINK_REGISTRY
 from trackey.core.registries.node       import NODE_REGISTRY
 from trackey.core.registries.render     import RENDERER_REGISTRY
+from trackey.core.registries.reid       import REID_REGISTRY
 
 from trackey.core.interfaces.detector   import Detector
 from trackey.core.interfaces.tracker    import Tracker
 from trackey.core.interfaces.analyzer   import Analyzer
 from trackey.core.interfaces.node       import PipelineNode
 from trackey.core.interfaces.renderer   import Renderer
+from trackey.core.interfaces.extractor  import FeatureExtractor
 from trackey.data.schemas.event         import BaseEvent
 
 from trackey.plugins.io.source              import SourcePlugin
@@ -49,6 +51,14 @@ def register_analyzer(name: str):
         if not issubclass(cls, Analyzer):
             raise TypeError(f"{cls.__name__} must extend Analyzer")
         ANALYZER_REGISTRY[name] = cls
+        return cls
+    return wrapper
+
+def register_reid(name: str):
+    def wrapper(cls: Type[FeatureExtractor]):
+        if not issubclass(cls, FeatureExtractor):
+            raise TypeError(f"{cls.__name__} must extend FeatureExtractor")
+        REID_REGISTRY[name] = cls
         return cls
     return wrapper
 
@@ -124,3 +134,4 @@ def register_sink(name: str):
         SINK_REGISTRY[name] = cls
         return cls
     return wrapper
+

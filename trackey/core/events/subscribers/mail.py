@@ -70,9 +70,9 @@ class MailSubscriber(Subscriber):
 
         with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
             server.starttls()
-            print(f"password: {self.password}")
-            print(f"sender: {message.sender}")
-            print(f"to: {message.to}")
+            # print(f"password: {self.password}")
+            # print(f"sender: {message.sender}")
+            # print(f"to: {message.to}")
             if self.password:
                 server.login(message.sender, self.password)
             server.sendmail(

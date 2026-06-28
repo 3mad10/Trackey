@@ -2,6 +2,7 @@ import logging
 from typing import Optional, List
 from datetime import datetime, timezone
 from collections import defaultdict, deque
+from dataclasses import replace
 
 from trackey.core.interfaces.tracker import Tracker
 from trackey.data.schemas.track import Track
@@ -69,12 +70,13 @@ class DeepSortTracker(Tracker):
             bbox = self._get_bbox(ds_track, frame=frame)
             if self._track_exist(ds_track.track_id):
                 track: Track = self.tracks[ds_track.track_id]
-                track = track.model_copy(update={
-                    'bbox': bbox,
-                    'history': self._update_history(track.history, bbox),
-                    'age': ds_track.age,
-                    'last_seen': now,
-                    })
+                track = replace(
+                    track,
+                    bbox=bbox,
+                    history=self._update_history(track.history, bbox),
+                    age=ds_track.age,
+                    last_seen=now,
+                )
                 # print("asdsaddasasdasd")
                 # print(track)
                 tracks.append(track)

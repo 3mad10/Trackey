@@ -38,6 +38,7 @@ class FrameContext:
     def with_analytics(self, key: str, value: Any) -> "FrameContext":
         return replace(self, analytics={**self.analytics, key: value})
     
+    
     def with_memberships(self, memberships: ZoneMemberships) -> "FrameContext":
         return replace(self, zone_memberships=memberships)
     

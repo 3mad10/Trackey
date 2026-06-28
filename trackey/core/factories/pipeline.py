@@ -4,6 +4,7 @@ from typing import List, Tuple, Dict, Optional
 from trackey.core.registries.detection import DETECTOR_REGISTRY
 from trackey.core.registries.tracking  import TRACKER_REGISTRY
 from trackey.core.registries.analyzer  import ANALYZER_REGISTRY
+from trackey.core.registries.reid      import REID_REGISTRY
 from trackey.core.registries.node      import NODE_REGISTRY
 from trackey.core.scene.scene          import Scene
 from trackey.core.events.bus           import EventBus
@@ -37,6 +38,7 @@ class PipelineBuilder(Builder):
         "detector":     DETECTOR_REGISTRY,
         "tracker":      TRACKER_REGISTRY,
         "analyzer":     ANALYZER_REGISTRY,
+        "reid":         REID_REGISTRY,
     }
 
     # which control nodes need scene injected

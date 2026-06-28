@@ -4,7 +4,6 @@ from dataclasses import dataclass, field, replace
 from trackey.data.schemas.track import Track
 from trackey.core.context import FrameContext
 from trackey.core.interfaces.node import PipelineNode
-from trackey.core.interfaces.node import PipelineNode
 from trackey.core.scene.mappings import ZoneMemberships
 from trackey.core.scene import Scene
 from trackey.data.schemas.event import EventDefinition
@@ -67,6 +66,25 @@ class AnalyzerNode(PipelineNode, ZoneFilterMixin):
 
     def get_outputs(self) -> List[str]:
         return [f"analytics.{self.name}"]
+
+@dataclass
+class ReIDNode(PipelineNode, ZoneFilterMixin):
+    reid_model: FeatureExtractor
+    zone_name: Optional[str] = None
+
+    def process(self, ctx: FrameContext) -> FrameContext:
+        
+        tracks = self.filter_tracks(ctx)
+
+        enriched_tracks = self.reid_model.extract(tracks, ctx.frame)
+        return ctx.with_tracks(enriched_tracks)
+    
+    def get_inputs(self) -> List[str]:
+        return ["tracks", "zone_memberships"]
+
+    def get_outputs(self) -> List[str]:
+        return [f"analytics.{self.name}"]
+
 
 @dataclass
 class SpatialIndexNode(PipelineNode):
@@ -161,19 +179,6 @@ class ConditionNode(PipelineNode):
         if not op:
             raise ValueError(f"Unknown operator: {self.operator}")
         return op(value, self.threshold)
-    
-
-@dataclass
-class ReIDNode(PipelineNode, ZoneFilterMixin):
-    reid_model: None
-
-    def process(self, ctx: FrameContext) -> FrameContext:
-
-        tracks = self.filter_tracks(ctx)
-
-        enriched_tracks = self.reid_model.assign_ids(tracks)
-        ctx.tracks = enriched_tracks
-        return ctx
 
 
 class PostprocessorNode(PipelineNode):
