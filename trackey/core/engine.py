@@ -170,6 +170,7 @@ if __name__ == '__main__':
     from trackey.core.io.output.viewer import OpenCVViewer
     from trackey.core.detectors import YoloDetector
     from trackey.core.trackers import DeepSortTracker
+    from trackey.core.recognition.person.osnet import OsNetReid
     from trackey.core.analyzers import Counter
     from trackey.core.rendering.opencv_renderer import OpenCVRenderer
     from trackey.core.events.types import CountExceededEvent

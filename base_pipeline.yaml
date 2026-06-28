@@ -42,6 +42,10 @@ pipeline:
         metrics:
           - current
           - cumulative
+    - name: reid
+      type: reid
+      processor: osnet
+      zone_name: Entrance
     - name: count_condition
       type: condition
       params:
@@ -72,6 +76,9 @@ pipeline:
 
     - from: count_condition
       to:   publisherA
+    
+    - from: spatial_analyzer
+      to:   reid
 
 
 subscribers:
