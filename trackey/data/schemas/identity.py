@@ -7,16 +7,9 @@ from dataclasses import dataclass, field
 @dataclass
 class Identity:
     global_id:  UUID                    = field(default_factory=dict)
-    embeddings: List[np.ndarray]         = field(default_factory=list)
     label:      Optional[str]           = None
     metadata:   Dict[str, Any]          = field(default_factory=dict)
     max_embeddings: int                 = 10     # cap per identity
-
-    def add_embedding(self, embedding: np.ndarray) -> None:
-        """Add new embedding, drop oldest if at capacity."""
-        if len(self.embeddings) >= self.max_embeddings:
-            self.embeddings.pop(0)
-        self.embeddings.append(embedding)
 
     def best_similarity(self, query: np.ndarray) -> float:
         """Return highest cosine similarity against all stored embeddings."""

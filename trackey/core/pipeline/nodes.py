@@ -67,6 +67,7 @@ class AnalyzerNode(PipelineNode, ZoneFilterMixin):
     def get_outputs(self) -> List[str]:
         return [f"analytics.{self.name}"]
 
+
 @dataclass
 class ReIDNode(PipelineNode, ZoneFilterMixin):
     reid_model: FeatureExtractor
@@ -76,8 +77,8 @@ class ReIDNode(PipelineNode, ZoneFilterMixin):
         
         tracks = self.filter_tracks(ctx)
 
-        enriched_tracks = self.reid_model.extract(tracks, ctx.frame)
-        return ctx.with_tracks(enriched_tracks)
+        embeddings = self.reid_model.extract(tracks, ctx.frame)        
+        return ctx.with_embeddings(tracks, embeddings)
     
     def get_inputs(self) -> List[str]:
         return ["tracks", "zone_memberships"]
