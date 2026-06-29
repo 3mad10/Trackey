@@ -3,7 +3,7 @@ from typing import List
 from trackey.core.interfaces.extractor import FeatureExtractor
 from trackey.data.schemas.frame import Frame
 from trackey.data.schemas.track import Track
-from trackey.data.schemas.identity import Identity
+from trackey.data.schemas.feature import Embedding
 from trackey.core.register import register_reid
 
 
@@ -21,18 +21,14 @@ class OsNetReid(FeatureExtractor):
         )
 
 
-    def extract(self, tracks: List[Track], frame: Frame) -> List[Track]:
+    def extract(self, tracks: List[Track], frame: Frame) -> List[Embedding]:
+        embeddings: List[Embedding] = []
         for track in tracks:
             x1, y1, x2, y2 = track.bbox.to_pixel_xyxy(frame.width, frame.height)
             cropped_frame = frame.frame[x1:x2, y1:y2]
-            embedding = self.extractor(cropped_frame)
-            if track.identity:
-                track.identity.add_embedding(embedding)
-                print("added new embedding", embedding)
-            else:
-                track.identity = Identity()
-                print("created new Identity", embedding)
-        return tracks
+            embedding = self.extractor(cropped_frame).cpu().numpy()
+            embeddings.append(embedding)
+        return embeddings
 
     def close(self):
         pass

@@ -5,6 +5,7 @@ from trackey.data.schemas.frame import Frame
 from trackey.data.schemas.detection import Detection
 from trackey.data.schemas.track import Track
 from trackey.data.schemas.event import BaseEvent
+from trackey.data.schemas.feature import Embedding
 from trackey.core.scene.mappings import ZoneMemberships
 
 
@@ -38,6 +39,10 @@ class FrameContext:
     def with_analytics(self, key: str, value: Any) -> "FrameContext":
         return replace(self, analytics={**self.analytics, key: value})
     
+    def with_embeddings(self, tracks: List[Track], embeddings: List[Embedding]) -> "FrameContext":
+        for i in range(len(tracks)):
+            tracks[i].embedding=embeddings[i]
+        return replace(self, tracks=tracks)
     
     def with_memberships(self, memberships: ZoneMemberships) -> "FrameContext":
         return replace(self, zone_memberships=memberships)

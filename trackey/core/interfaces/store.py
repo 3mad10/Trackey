@@ -3,19 +3,19 @@ from typing import Optional, List, Dict
 from uuid import UUID
 import numpy as np
 
-from trackey.data.schemas.frame import Frame
+from trackey.data.schemas.feature import Embedding
 
 
 class IdentificationStore(ABC):
 
     @abstractmethod
-    def search(self, embedding: np.ndarray,
+    def search(self, embedding: Embedding,
                threshold: float = 0.7) -> Optional[Identity]:
         """Find best matching identity above threshold."""
         pass
 
     @abstractmethod
-    def register(self, embedding: np.ndarray,
+    def register(self, embedding: Embedding,
                  label: Optional[str] = None) -> Identity:
         """Create new identity with first embedding."""
         pass

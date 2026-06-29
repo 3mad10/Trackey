@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Dict, List, Tuple, Optional, Any
 import numpy as np
 from pydantic import field_validator
+from dataclasses import dataclass
 
 from trackey.data.schemas.detection import BoundingBox
 
@@ -103,3 +104,7 @@ class Features(BaseModel):
     keypoints: Optional[Keypoints] = None         # pose
     depth: Optional[float] = None                 # depth estimation
     attributes: Dict[str, Any] = Field(default_factory=dict)  # age, gender, color etc.
+
+@dataclass
+class Embedding:
+    vector: np.ndarray
