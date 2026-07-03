@@ -12,10 +12,11 @@ from trackey.core.pipeline.edge        import Edge
 from trackey.core.interfaces.node      import PipelineNode
 from trackey.core.factories.builder    import Builder
 from trackey.core.utils.graph          import topological_sort
+from trackey.data.schemas.detection    import DetectionSource
 
 logger = logging.getLogger(__name__)
 
-
+#TODO: CHajnge to plugin based validation and build
 class PipelineBuilder(Builder):
     PROCESSING_NODES = ["detector", "tracker", "analyzer", "reid", "postprocessor"]
     CONTROL_NODES    = ["spatial_index", "condition", "switch", "publisher", "branch"]
@@ -67,9 +68,10 @@ class PipelineBuilder(Builder):
                  event_bus: EventBus):
         self.nodes:     Dict[str, PipelineNode] = {}
         self.edges:     List[Edge]              = []
-        self.cfg        = self._load_yaml(cfg_path)
-        self.scene      = scene
-        self.event_bus  = event_bus
+        self.cfg                                = self._load_yaml(cfg_path)
+        self.scene                              = scene
+        self.event_bus                          = event_bus
+        self.detection_sources: List[str]       = []
 
     # ------------------------------------------------------------------ #
     # Public API                                                           #
@@ -107,6 +109,8 @@ class PipelineBuilder(Builder):
 
         for node_cfg in nodes_cfg:
             self._validate_node_cfg(node_cfg)
+        self._validate_primary_source()
+        for node_cfg in nodes_cfg:
             node = self._build_node(node_cfg)
             self.nodes[node.name] = node
 
@@ -136,11 +140,12 @@ class PipelineBuilder(Builder):
     # ------------------------------------------------------------------ #
     # Processing node builders                                             #
     # ------------------------------------------------------------------ #
-
     def _build_detector_node(self, node_cfg: dict):
         from trackey.core.pipeline.nodes import DetectorNode
         component = self._build_component(node_cfg)
-        return DetectorNode(name=node_cfg["name"], detector=component)
+        DetectionSource.register(node_cfg["source"])
+        return DetectorNode(name=node_cfg["name"], detector=component,
+                            detection_source = node_cfg["source"])
 
     def _build_tracker_node(self, node_cfg: dict):
         from trackey.core.pipeline.nodes import TrackerNode
@@ -281,12 +286,38 @@ class PipelineBuilder(Builder):
                 f"[PipelineBuilder] Unknown node type: '{node_type}'. "
                 f"Available: {all_types}"
             )
-
+        if node_type == 'detector':
+            self._validate_source(node_cfg)
         # type-specific validation
         if node_type in self.PROCESSING_NODES:
             self._validate_processing_node(node_cfg)
         else:
             self._validate_control_node(node_cfg)
+
+    def _validate_primary_source(self) -> None:
+        if "primary" not in self.detection_sources:
+            raise ValueError(
+                f"[PipelineBuilder] Missing detector node with source = primary "
+                f"There must be one node and one node only with source = primary"
+                f"Which will be passed to the Tracker node as input"
+                f"Other nodes of type detector can have any source value"
+                f"but the source value must be unique across detector nodes"
+            )
+    def _validate_source(self, node_cfg: dict) -> None:
+        if "source" not in node_cfg:
+            raise ValueError(
+                f"[PipelineBuilder] Node of type {node_cfg['type']} missing 'source'. "
+                f"There must be one node and one node only with source = primary"
+                f"Which will be passed to the Tracker node as input"
+                f"Other nodes of type detector can have any source value"
+                f"but the source value must be unique across detector nodes"
+            )
+        detection_source: str = node_cfg["source"]
+        if detection_source in self.detection_sources:
+            raise ValueError(
+                f"[PipelineBuilder] Detection Source already defined: 'detection_source'. "
+            )
+        self.detection_sources.append(detection_source)
 
     def _validate_processing_node(self, node_cfg: dict) -> None:
         if "processor" not in node_cfg:

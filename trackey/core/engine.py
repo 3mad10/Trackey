@@ -120,7 +120,6 @@ class Engine:
         )
 
         ctx = self.executor.run(ctx)
-
         # render if renderer exists
         rendered = self.renderer.render(ctx) if self.renderer else None
 
@@ -174,6 +173,7 @@ if __name__ == '__main__':
     from trackey.core.analyzers import Counter
     from trackey.core.rendering.opencv_renderer import OpenCVRenderer
     from trackey.core.events.types import CountExceededEvent
+    from trackey.core.recognition.face.retina import RetinaFaceDetector
     # scene = SceneBuilder(cfg_path="base_pipeline.yaml").build()
     # pipeline_builder = PipelineBuilder(cfg_path="base_pipeline.yaml", scene=scene)
     # pipeline = PipelineExecutor(pipeline_builder.build())

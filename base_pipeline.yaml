@@ -19,6 +19,7 @@ pipeline:
     - name: detectorA
       type: detector
       processor: yolo
+      source: primary
       params:
         weights: yolov8n.pt
     - name: trackerA
@@ -42,6 +43,10 @@ pipeline:
         metrics:
           - current
           - cumulative
+    - name: face_detector
+      type: detector
+      processor: retinaface
+      source: faces
     - name: reid
       type: reid
       processor: osnet
@@ -97,11 +102,11 @@ renderer:
   type: opencv
   styles:
     detections:
-      show:       false
-      show_bbox:  false
-      show_label: false
+      show:       true
+      show_bbox:  true
+      show_label: true
       bbox:
-        color:     [255, 0, 255]
+        color:     [200, 200, 255]
         thickness: 1
       label:
         color:    [0, 0, 0]
