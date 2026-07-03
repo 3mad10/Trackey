@@ -74,6 +74,8 @@ class PipelineExecutor:
                     f"latency.{node_name}": round(elapsed * 1000, 2)
                 }
             )
+            print("latency")
+            print(out_ctx.metadata)
 
             results[node_name] = out_ctx
 
@@ -142,7 +144,10 @@ class PipelineExecutor:
         base = ctxs[0]
         return replace(
             base,
-            detections=[d for c in ctxs for d in c.detections],
+            detections={
+                k: v for c in ctxs
+                for k, v in c.detections.items()
+            },
             tracks=[t for c in ctxs for t in c.tracks],
             events=[e for c in ctxs for e in c.events],
             analytics={

@@ -4,6 +4,24 @@ from uuid import UUID, uuid4
 from typing import Tuple
 
 
+class DetectionSource:
+    PRIMARY = "primary"   # reserved, always exists
+
+    _registered: set = {"primary"}
+
+    @classmethod
+    def register(cls, name: str) -> str:
+        cls._registered.add(name)
+        return name
+
+    @classmethod
+    def validate(cls, name: str) -> str:
+        if name in cls._registered:
+            raise ValueError(
+                f"DetectionSource: '{name}' already exists. "
+            )
+        return name
+
 class BoundingBox(BaseModel):
     cy: float = Field(ge=0.0, le=1.0)
     cx: float = Field(ge=0.0, le=1.0)

@@ -187,26 +187,27 @@ class OpenCVRenderer(Renderer):
         if not style.show:
             return
 
-        for det in ctx.detections:
-            if det.bbox is None:
-                continue
+        for det_source in ctx.detections:
+            for det in ctx.detections[det_source]:
+                if det.bbox is None:
+                    continue
 
-            px_bbox   = det.bbox.to_pixel_xyxy(self._w, self._h)
-            norm_bbox = self._bbox_px_to_norm(px_bbox)
-            x1, y1, _, _ = norm_bbox
-            
-            if style.show_bbox:
-                self._draw(BBoxDrawable(
-                    bbox=norm_bbox,
-                    style=style.bbox,
-                ), img)
+                px_bbox   = det.bbox.to_pixel_xyxy(self._w, self._h)
+                norm_bbox = self._bbox_px_to_norm(px_bbox)
+                x1, y1, _, _ = norm_bbox
+                
+                if style.show_bbox:
+                    self._draw(BBoxDrawable(
+                        bbox=norm_bbox,
+                        style=style.bbox,
+                    ), img)
 
-            if style.show_label and det.class_name:
-                self._draw(TextDrawable(
-                    text=f"{det.class_name} {det.confidence:.2f}",
-                    position=(x1, y1 - 0.015),
-                    style=style.label,
-                ), img)
+                if style.show_label and det.class_name:
+                    self._draw(TextDrawable(
+                        text=f"{det.class_name} {det.confidence:.2f}",
+                        position=(x1, y1 - 0.015),
+                        style=style.label,
+                    ), img)
 
     # ------------------------------------------------------------------ #
     # Tracks - convert pixel bbox to normalized                            #
