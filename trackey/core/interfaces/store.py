@@ -4,6 +4,7 @@ from uuid import UUID
 import numpy as np
 
 from trackey.data.schemas.feature import Embedding
+from trackey.data.schemas.identity import Identity
 
 
 class IdentificationStore(ABC):
@@ -29,9 +30,4 @@ class IdentificationStore(ABC):
     @abstractmethod
     def get(self, global_id: UUID) -> Optional[Identity]:
         """Retrieve identity by ID."""
-        pass
-
-    @abstractmethod
-    def load_watchlist(self, watchlist: Dict[str, List[np.ndarray]]) -> None:
-        """Pre-load known identities. label → list of embeddings."""
         pass

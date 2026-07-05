@@ -16,7 +16,6 @@ class Track:
     class_name: str
 
     identity: Optional[Identity] = None
-    embedding: Optional[np.ndarray] = None
     confidence: float = 1.0
     age: int = 1
 

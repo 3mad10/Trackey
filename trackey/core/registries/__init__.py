@@ -7,6 +7,7 @@ from trackey.core.registries.subscriber import SUBSCRIBER_REGISTRY
 from trackey.core.registries.source     import SOURCE_REGISTRY
 from trackey.core.registries.sink       import SINK_REGISTRY
 from trackey.core.registries.reid       import REID_REGISTRY
+from trackey.core.registries.store      import STORE_REGISTRY
 
 __all__ = [
     "DETECTOR_REGISTRY",
@@ -18,4 +19,5 @@ __all__ = [
     "SOURCE_REGISTRY",
     "SINK_REGISTRY",
     "REID_REGISTRY",
+    "STORE_REGISTRY",
 ]
