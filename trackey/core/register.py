@@ -8,6 +8,7 @@ from trackey.core.registries.sink       import SINK_REGISTRY
 from trackey.core.registries.node       import NODE_REGISTRY
 from trackey.core.registries.render     import RENDERER_REGISTRY
 from trackey.core.registries.reid       import REID_REGISTRY
+from trackey.core.registries.store      import STORE_REGISTRY
 
 from trackey.core.interfaces.detector   import Detector
 from trackey.core.interfaces.tracker    import Tracker
@@ -15,10 +16,12 @@ from trackey.core.interfaces.analyzer   import Analyzer
 from trackey.core.interfaces.node       import PipelineNode
 from trackey.core.interfaces.renderer   import Renderer
 from trackey.core.interfaces.extractor  import FeatureExtractor
+from trackey.core.interfaces.store      import IdentificationStore
 from trackey.data.schemas.event         import BaseEvent
 
 from trackey.plugins.io.source              import SourcePlugin
 from trackey.plugins.io.sink                import SinkPlugin
+from trackey.plugins.stores.store           import StorePlugin
 from trackey.plugins.subscribers.subscriber import SubscriberPlugin
 
 from typing import Type
@@ -132,6 +135,15 @@ def register_sink(name: str):
         if not issubclass(cls, SinkPlugin):
             raise TypeError(f"{cls.__name__} must extend SinkPlugin")
         SINK_REGISTRY[name] = cls
+        return cls
+    return wrapper
+
+
+def register_store(name: str):
+    def wrapper(cls: Type[StorePlugin]):
+        if not issubclass(cls, IdentificationStore):
+            raise TypeError(f"{cls.__name__} must extend IdentificationStore")
+        STORE_REGISTRY[name] = cls
         return cls
     return wrapper
 

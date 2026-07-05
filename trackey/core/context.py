@@ -14,29 +14,38 @@ from trackey.core.scene.mappings import ZoneMemberships
 class FrameContext:
 
     # hardware input — raw frame from source
-    frame: Frame
+    frame:                      Frame
 
     # identity — set once by Engine, never changed
-    frame_id:  int   = 0
-    camera_id: str   = ""
-    timestamp: float = 0.0
+    frame_id:                   int   = 0
+    camera_id:                  str   = ""
+    timestamp:                  float = 0.0
 
     # pipeline data — enriched by nodes
-    detections: Dict[DetectionSource, List[Detection]] = field(default_factory=dict)
+    detections:                 Dict[DetectionSource, 
+                                     List[Detection]]       = field(default_factory=dict)
 
-    detections_associations: Dict[Union[UUID, int], List[Detection]] = field(default_factory=dict)
     # key   = track.id (UUID)
-    # value = detections associated with that track (e.g. face detections)
+    # value = Key Value dict of detection source - detection object
     # populated by FaceAssociationNode or similar
+    detections_associations:    Dict[Union[UUID, int], 
+                                     Dict[str, List[Detection]]] = field(default_factory=dict)
 
-    tracks:           List[Track]      = field(default_factory=list)
-    zone_memberships: ZoneMemberships  = field(default_factory=ZoneMemberships)
-    analytics:        Dict[str, Any]   = field(default_factory=dict)
-    events:           List[BaseEvent]  = field(default_factory=list)
-    metadata:         Dict[str, Any]   = field(default_factory=dict)
+    feature_store:              Dict[str, Dict[Union[UUID, int], Any]] # dict of features dict of per track features
 
+    tracks:                     List[Track]                 = field(default_factory=list)
+    # ephemeral per-track computed values
+    # dwell_time, speed, pose, embeddings
+    per_track:                  Dict[str, Dict[UUID, Any]]  = field(default_factory=dict)
+    # Scene level analytics e.g. counts, heatmaps
+    analytics:                  Dict[str, Any]              = field(default_factory=dict)
+    zone_memberships:           ZoneMemberships             = field(default_factory=ZoneMemberships)
+    events:                     List[BaseEvent]             = field(default_factory=list)
+    # Latency, memory, timings
+    metadata:                   Dict[str, Any]              = field(default_factory=dict)
+    
     # DAG routing — set by SwitchNode/ConditionNode, consumed by executor
-    active_branch: Optional[str] = None
+    active_branch:              Optional[str]               = None
 
     # ------------------------------------------------------------------ #
     # Pure functional updates — no business logic, no mutation            #
