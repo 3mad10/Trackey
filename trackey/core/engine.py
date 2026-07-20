@@ -57,7 +57,8 @@ class Engine:
         scene           = SceneBuilder(cfg_path).build()
         source          = SourceBuilder(cfg_path).build()
         event_bus       = EventBusBuilder(cfg_path).build()
-        nodes, edges    = PipelineBuilder(cfg_path, scene, event_bus).build()
+        stores          = StoreBuilder(cfg_path).build()
+        nodes, edges    = PipelineBuilder(cfg_path, scene, event_bus, stores).build()
         renderer        = RendererBuilder(cfg_path, scene).build()
         sinks           = SinkBuilder(cfg_path).build()
         
@@ -166,6 +167,9 @@ if __name__ == '__main__':
     from trackey.plugins.io.display import DisplaySinkPlugin
     from trackey.plugins.subscribers.mail import MailSubscriberPlugin
     from trackey.plugins.subscribers.null import NullSubscriberPlugin
+    from trackey.plugins.stores.postgress_embedding import PostgresEmbeddingRepositoryPlugin
+    from trackey.plugins.stores.postgres import PostgresRepositoryPlugin
+    from trackey.plugins.stores.faiss import FaissEmbeddingStore
     from trackey.core.io.output.viewer import OpenCVViewer
     from trackey.core.detectors import YoloDetector
     from trackey.core.trackers import DeepSortTracker

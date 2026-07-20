@@ -13,7 +13,7 @@ from trackey.core.pipeline.constants import UNKOWN_DETECTION_ID
 logger = logging.getLogger(__name__)
 
 
-@register_reid("retinaface")
+@register_detector("arcface")
 class RetinaFaceDetector(Detector):
     """
     Whole-frame face detector using InsightFace's RetinaFace model.

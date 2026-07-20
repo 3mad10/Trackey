@@ -104,7 +104,3 @@ class Features(BaseModel):
     keypoints: Optional[Keypoints] = None         # pose
     depth: Optional[float] = None                 # depth estimation
     attributes: Dict[str, Any] = Field(default_factory=dict)  # age, gender, color etc.
-
-@dataclass
-class Embedding:
-    vector: np.ndarray

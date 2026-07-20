@@ -11,7 +11,7 @@ from trackey.data.schemas.identity import Identity
 
 @dataclass(slots=True)
 class Track:
-    id: Union[UUID, int]
+    tracker_id: int
     bbox: BoundingBox
     class_name: str
 
@@ -36,3 +36,11 @@ class Track:
     @property
     def trajectory(self)-> List[Tuple[float, float]]:
         return [(b.cx, b.cy) for b in self.history]
+
+    @property
+    def global_id(self) -> Optional[UUID]:
+        return self.identity.global_id if self.identity else None
+
+    @property
+    def label(self) -> Optional[str]:
+        return self.identity.label if self.identity else None

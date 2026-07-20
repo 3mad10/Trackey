@@ -11,7 +11,7 @@ class Builder(ABC):
     # Public Interface                                                   #
     # ------------------------------------------------------------------ #
     @abstractmethod
-    def build() -> None:
+    def build(self) -> None:
         pass
 
     # ------------------------------------------------------------------ #

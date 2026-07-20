@@ -82,7 +82,7 @@ class DeepSortTracker(Tracker):
                 tracks.append(track)
             else:
                 track: Track = Track(
-                        id=ds_track.track_id,
+                        tracker_id=ds_track.track_id,
                         bbox=bbox,
                         confidence=ds_track.get_det_conf() or 1.0,
                         class_name=ds_track.get_det_class(),

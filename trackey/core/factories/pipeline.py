@@ -12,6 +12,7 @@ from trackey.core.pipeline.edge        import Edge
 from trackey.core.interfaces.node      import PipelineNode
 from trackey.core.factories.builder    import Builder
 from trackey.core.utils.graph          import topological_sort
+from trackey.core.interfaces.store     import IdentificationStore
 from trackey.data.schemas.detection    import DetectionSource
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 #TODO: CHajnge to plugin based validation and build
 class PipelineBuilder(Builder):
     PROCESSING_NODES = ["detector", "tracker", "analyzer", "reid", "postprocessor"]
-    CONTROL_NODES    = ["spatial_index", "condition", "switch", "publisher", "branch"]
+    CONTROL_NODES    = ["spatial_index", "condition", "switch", "publisher", "branch", "identify", "identity_manager"]
 
     PIPELINE_STRUCTURE = (
         "pipeline:\n"
@@ -61,16 +62,20 @@ class PipelineBuilder(Builder):
         "switch":        "_build_switch_node",
         "publisher":     "_build_publisher_node",
         "branch":        "_build_branch_node",
+        "identify":      "_build_identify_node",
+        "identity_manager": "_build_identity_manager_node",
     }
                               
     def __init__(self, cfg_path: str,
                  scene:     Scene,
-                 event_bus: EventBus):
+                 event_bus: EventBus,
+                 stores: Dict[str, "IdentificationStore"] = None):
         self.nodes:     Dict[str, PipelineNode] = {}
         self.edges:     List[Edge]              = []
         self.cfg                                = self._load_yaml(cfg_path)
         self.scene                              = scene
         self.event_bus                          = event_bus
+        self.stores                             = stores or {}
         self.detection_sources: List[str]       = []
 
     # ------------------------------------------------------------------ #
@@ -162,9 +167,15 @@ class PipelineBuilder(Builder):
         )
 
     def _build_reid_node(self, node_cfg: dict):
-        from trackey.core.pipeline.nodes import ReIDNode
+        from trackey.core.pipeline.nodes import EmbeddingNode
         component = self._build_component(node_cfg)
-        return ReIDNode(name=node_cfg["name"], reid_model=component)
+        params = node_cfg.get("params") or {}
+        return EmbeddingNode(
+            name=node_cfg["name"],
+            extractor=component,
+            modality=node_cfg.get("modality") or node_cfg["name"],
+            zone_name=node_cfg.get("zone_name"),
+        )
 
     def _build_postprocessor_node(self, node_cfg: dict):
         from trackey.core.pipeline.nodes import PostprocessorNode
@@ -205,7 +216,31 @@ class PipelineBuilder(Builder):
             definitions=definitions,
             event_bus=self.event_bus
         )
+    
+    def _build_identify_node(self, node_cfg: dict):
+        from trackey.core.pipeline.nodes import IdentificationNode
+        from trackey.core.recognition.identifier import Identifier
 
+        params     = node_cfg.get("params") or {}
+        store_name = params.get("store")
+        store      = self.stores.get(store_name)
+        if store is None:
+            raise ValueError(
+                f"[PipelineBuilder] Node '{node_cfg['name']}' references "
+                f"unknown store '{store_name}'. Available: {list(self.stores.keys())}"
+            )
+
+        identifier = Identifier(
+            store=store,
+            modality=params["modality"],
+            threshold=params.get("threshold", 0.75),
+            read_only=params.get("read_only", False),
+        )
+        return IdentificationNode(name=node_cfg["name"], identifier=identifier)
+
+    def _build_identity_manager_node(self, node_cfg: dict):
+        from trackey.core.pipeline.nodes import UnifiedIdentityManagerNode
+        return UnifiedIdentityManagerNode(name=node_cfg["name"])
 
     # ------------------------------------------------------------------ #
     # Shared component builder                                             #

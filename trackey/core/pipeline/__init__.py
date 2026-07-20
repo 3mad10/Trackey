@@ -2,7 +2,7 @@ from .nodes import (
     DetectorNode,
     TrackerNode,
     AnalyzerNode,
-    ReIDNode,
+    EmbeddingNode,
     PostprocessorNode,
 )
 from .executer import PipelineExecutor
@@ -11,7 +11,7 @@ __all__ = [
     "DetectorNode",
     "TrackerNode",
     "AnalyzerNode",
-    "ReIDNode",
+    "EmbeddingNode",
     "PostprocessorNode",
     "PipelineExecutor",
 ]
