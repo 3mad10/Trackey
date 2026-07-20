@@ -8,7 +8,7 @@ from trackey.core.registries.sink       import SINK_REGISTRY
 from trackey.core.registries.node       import NODE_REGISTRY
 from trackey.core.registries.render     import RENDERER_REGISTRY
 from trackey.core.registries.reid       import REID_REGISTRY
-from trackey.core.registries.store      import STORE_REGISTRY
+from trackey.core.registries.store      import STORE_REGISTRY, REPOSITORY_REGISTRY, EMBEDDING_STORE_REGISTRY
 
 from trackey.core.interfaces.detector   import Detector
 from trackey.core.interfaces.tracker    import Tracker
@@ -16,16 +16,18 @@ from trackey.core.interfaces.analyzer   import Analyzer
 from trackey.core.interfaces.node       import PipelineNode
 from trackey.core.interfaces.renderer   import Renderer
 from trackey.core.interfaces.extractor  import FeatureExtractor
-from trackey.core.interfaces.store      import IdentificationStore
+from trackey.core.interfaces.store      import IdentificationStore, IdentityRepository, EmbeddingStore
 from trackey.data.schemas.event         import BaseEvent
 
 from trackey.plugins.io.source              import SourcePlugin
 from trackey.plugins.io.sink                import SinkPlugin
-from trackey.plugins.stores.store           import StorePlugin
+from trackey.plugins.stores.embedding_repository           import EmbeddingRepositoryPlugin
 from trackey.plugins.subscribers.subscriber import SubscriberPlugin
 
 from typing import Type
 
+from trackey.plugins.stores.identity_repository import IdentityRepositoryPlugin
+from trackey.plugins.stores.embedding  import EmbeddingStorePlugin
 
 # ------------------------------------------------------------------ #
 # Processing components                                                #
@@ -139,11 +141,27 @@ def register_sink(name: str):
     return wrapper
 
 
-def register_store(name: str):
-    def wrapper(cls: Type[StorePlugin]):
-        if not issubclass(cls, IdentificationStore):
-            raise TypeError(f"{cls.__name__} must extend IdentificationStore")
+def register_embedding_repository(name: str):
+    def wrapper(cls: Type[EmbeddingRepositoryPlugin]):
+        if not issubclass(cls, EmbeddingRepositoryPlugin):
+            raise TypeError(f"{cls.__name__} must extend EmbeddingRepositoryPlugin")
         STORE_REGISTRY[name] = cls
         return cls
     return wrapper
 
+
+def register_identity_repository(name: str):
+    def wrapper(cls: Type[IdentityRepositoryPlugin]):
+        if not issubclass(cls, IdentityRepositoryPlugin):
+            raise TypeError(f"{cls.__name__} must extend IdentityRepositoryPlugin")
+        REPOSITORY_REGISTRY[name] = cls
+        return cls
+    return wrapper
+
+def register_embedding_store(name: str):
+    def wrapper(cls: Type[EmbeddingStorePlugin]):
+        if not issubclass(cls, EmbeddingStorePlugin):
+            raise TypeError(f"{cls.__name__} must extend EmbeddingStorePlugin")
+        EMBEDDING_STORE_REGISTRY[name] = cls
+        return cls
+    return wrapper

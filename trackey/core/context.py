@@ -25,18 +25,15 @@ class FrameContext:
     detections:                 Dict[DetectionSource, 
                                      List[Detection]]       = field(default_factory=dict)
 
-    # key   = track.id (UUID)
+    # key   = tracktracker_id (UUID)
     # value = Key Value dict of detection source - detection object
     # populated by FaceAssociationNode or similar
-    detections_associations:    Dict[Union[UUID, int], 
-                                     Dict[str, List[Detection]]] = field(default_factory=dict)
-
-    feature_store:              Dict[str, Dict[Union[UUID, int], Any]] # dict of features dict of per track features
+    detections_associations:    Dict[int, Dict[str, List[Detection]]] = field(default_factory=dict)
 
     tracks:                     List[Track]                 = field(default_factory=list)
     # ephemeral per-track computed values
     # dwell_time, speed, pose, embeddings
-    per_track:                  Dict[str, Dict[UUID, Any]]  = field(default_factory=dict)
+    per_track:                  Dict[str, Dict[int, Any]]  = field(default_factory=dict)
     # Scene level analytics e.g. counts, heatmaps
     analytics:                  Dict[str, Any]              = field(default_factory=dict)
     zone_memberships:           ZoneMemberships             = field(default_factory=ZoneMemberships)

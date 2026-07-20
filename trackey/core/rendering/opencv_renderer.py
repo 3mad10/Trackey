@@ -237,7 +237,7 @@ class OpenCVRenderer(Renderer):
             if style.show_id:
                 anchor_x, anchor_y = self._bbox_anchor_top_left(norm_bbox)
                 self._draw(TextDrawable(
-                    text=f"ID: {str(track.id)[:8]}",
+                    text=f"ID: {str(track.tracker_id)[:8]}",
                     position=(anchor_x, anchor_y - 0.015),
                     style=style.id_label,
                 ), img)

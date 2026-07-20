@@ -1,9 +1,7 @@
 from abc import ABC, abstractmethod
-from trackey.core.interfaces.store import IdentificationStore
+from trackey.core.interfaces.store import EmbeddingStore
 
-
-class StorePlugin(ABC):
-
+class EmbeddingStorePlugin(ABC):
     @classmethod
     @abstractmethod
     def validate(cls, cfg: dict) -> None:
@@ -11,5 +9,5 @@ class StorePlugin(ABC):
 
     @classmethod
     @abstractmethod
-    def build(cls, cfg: dict) -> IdentificationStore:
+    def build(cls, cfg: dict) -> EmbeddingStore:
         pass

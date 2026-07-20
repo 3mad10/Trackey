@@ -8,12 +8,13 @@ from .scene import SceneBuilder
 from .renderer import RendererBuilder
 from .sink import SinkBuilder
 from .source import SourceBuilder
+from .store import StoreBuilder
 from trackey.core.pipeline.nodes import (
     DetectorNode,
     TrackerNode,
     AnalyzerNode,
     PostprocessorNode,
-    ReIDNode,
+    EmbeddingNode,
     SpatialIndexNode,
     PublisherNode,
 )
@@ -34,7 +35,7 @@ NODE_WRAPPERS = {
         **cfg
     ),
     "postprocessor": lambda node_name, component, cfg: PostprocessorNode(node_name, component),
-    "reid": lambda node_name, component, cfg: ReIDNode(node_name, component),
+    "reid": lambda node_name, component, cfg: EmbeddingNode(node_name, component),
 
 }
 
@@ -50,4 +51,5 @@ __all__ = [
     "EventBusBuilder",
     "RendererBuilder",
     "SinkBuilder",
+    "StoreBuilder",
 ]

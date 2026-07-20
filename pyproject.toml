@@ -34,11 +34,26 @@ face = [
     "onnx==1.17.0",
     "onnxruntime-gpu==1.20.1",
 ]
+postgres = [
+    "psycopg2-binary>=2.9"
+]
+mongodb = [
+    "pymongo>=4.0"
+]
+faiss = [
+    "faiss-cpu>=1.7"
+]
+stores = [
+    "trackey[postgres]",
+    "trackey[faiss]",
+    "trackey[mongodb]",
+]
 all = [
     "trackey[detection]",
     "trackey[tracking]",
     "trackey[reid]",
     "trackey[face]",
+    "trackey[stores]",
 ]
 dev = [
     "pytest==8.0.0",

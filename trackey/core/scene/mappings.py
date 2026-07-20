@@ -21,7 +21,7 @@ class ZoneMemberships:
             position = track.bbox.center
             for zone_name, zone in scene.zones.items():
                 if zone.contains(position):
-                    by_track[track.id].append(zone_name)
-                    by_zone[zone_name].append(track.id)
+                    by_track[track.tracker_id].append(zone_name)
+                    by_zone[zone_name].append(track.tracker_id)
         
         return cls(by_track=dict(by_track), by_zone=dict(by_zone))

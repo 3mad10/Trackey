@@ -1,9 +1,9 @@
+import numpy as np
 from typing import List
 
 from trackey.core.interfaces.extractor import FeatureExtractor
 from trackey.data.schemas.frame import Frame
 from trackey.data.schemas.track import Track
-from trackey.data.schemas.feature import Embedding
 from trackey.core.register import register_reid
 
 
@@ -21,11 +21,11 @@ class OsNetReid(FeatureExtractor):
         )
 
 
-    def extract(self, tracks: List[Track], frame: Frame) -> List[Embedding]:
-        embeddings: List[Embedding] = []
+    def extract(self, tracks: List[Track], frame: Frame) -> List[np.ndarray]:
+        embeddings: List[np.ndarray] = []
         for track in tracks:
             x1, y1, x2, y2 = track.bbox.to_pixel_xyxy(frame.width, frame.height)
-            cropped_frame = frame.frame[x1:x2, y1:y2]
+            cropped_frame = frame.frame[y1:y2, x1:x2]
             embedding = self.extractor(cropped_frame).cpu().numpy()
             embeddings.append(embedding)
         return embeddings

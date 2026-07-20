@@ -1,4 +1,8 @@
 from typing import Dict, Type
-from trackey.data.schemas.identity import Identity
+from trackey.plugins.stores.embedding_repository import EmbeddingRepositoryPlugin
+from trackey.plugins.stores.identity_repository import IdentityRepositoryPlugin
+from trackey.plugins.stores.embedding import EmbeddingStorePlugin
 
-STORE_REGISTRY: Dict[str, Type[Identity]] = {}
+STORE_REGISTRY: Dict[str, Type[EmbeddingRepositoryPlugin]] = {}
+REPOSITORY_REGISTRY: Dict[str, Type[IdentityRepositoryPlugin]] = {}
+EMBEDDING_STORE_REGISTRY: Dict[str, Type[EmbeddingStorePlugin]] = {}

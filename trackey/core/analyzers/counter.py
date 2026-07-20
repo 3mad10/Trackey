@@ -57,7 +57,7 @@ class Counter(Analyzer):
             # print(self.target_classes)
             if self.target_classes is None or track_class in self.target_classes:
                 current_counts[track_class] += 1
-                self.unique_tracks[track_class].add(track.id)
+                self.unique_tracks[track_class].add(track.tracker_id)
         
 
         result = {}

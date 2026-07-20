@@ -43,14 +43,6 @@ pipeline:
         metrics:
           - current
           - cumulative
-    - name: face_detector
-      type: detector
-      processor: retinaface
-      source: faces
-    - name: reid
-      type: reid
-      processor: osnet
-      zone_name: Entrance
     - name: count_condition
       type: condition
       params:
@@ -66,12 +58,33 @@ pipeline:
             count:        analytics.people_counter.person.cumulative
             zone_name:    analytics.people_counter.zone_name
 
+    - name: body_embedding
+      type: reid
+      processor: osnet
+      modality: body
+      params:
+        weights: osnet_x1_0.pth
+
+    - name: reid_person
+      type: identify
+      params:
+        store: people
+        modality: body
+        threshold: 0.7
+        read_only: false
+
   edges:
     - from: detectorA
       to:   trackerA
 
     - from: trackerA
       to:   spatial_analyzer
+    
+    - from: trackerA
+      to:   body_embedding
+  
+    - from: body_embedding
+      to:   reid_person
 
     - from: spatial_analyzer
       to:   people_counter
@@ -82,21 +95,28 @@ pipeline:
     - from: count_condition
       to:   publisherA
     
-    - from: spatial_analyzer
-      to:   reid
-
 
 subscribers:
   - type: mail
     listen: [count_exceeded_event]
+    throttle_seconds: 98
     params:
       sender: mail1
       to: [mail1, mail2, emd9810@gmail.com]
       password_env: TRACKEY_SMTP_PASSWORD
-      throttle_seconds: 98
   - type: null_subscriber
     listen: [count_exceeded_event]
     throttle_seconds: 10
+
+stores:
+  people:
+    type: identification
+    repository:
+      backend: postgres
+      params: {dsn: "postgresql://..."}
+    modalities:
+      body: {backend: faiss, dims: 512}
+      face: {backend: faiss, dims: 512}
 
 renderer:
   type: opencv
