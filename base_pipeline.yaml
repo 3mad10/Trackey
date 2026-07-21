@@ -63,7 +63,7 @@ pipeline:
       processor: osnet
       modality: body
       params:
-        weights: osnet_x1_0.pth
+        weights: osnet_ain_x1_0
 
     - name: reid_person
       type: identify
@@ -103,20 +103,28 @@ subscribers:
     params:
       sender: mail1
       to: [mail1, mail2, emd9810@gmail.com]
-      password_env: TRACKEY_SMTP_PASSWORD
+      password: ${TRACKEY_SMTP_PASSWORD}
   - type: null_subscriber
     listen: [count_exceeded_event]
     throttle_seconds: 10
-
 stores:
   people:
     type: identification
     repository:
       backend: postgres
-      params: {dsn: "postgresql://..."}
+      params:
+        host: localhost
+        port: 5432
+        database: trackey
+        user: trackey
+        password: ${DB_PASSWORD}
     modalities:
-      body: {backend: faiss, dims: 512}
-      face: {backend: faiss, dims: 512}
+      body:
+        backend: faiss
+        dims: 512
+      face:
+        backend: faiss
+        dims: 512
 
 renderer:
   type: opencv
