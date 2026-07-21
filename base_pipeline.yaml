@@ -101,8 +101,8 @@ subscribers:
     listen: [count_exceeded_event]
     throttle_seconds: 98
     params:
-      sender: mail1
-      to: [mail1, mail2, emd9810@gmail.com]
+      sender: m.emad7798@gmail.com
+      to: [m.emad7798@gmail.com, m.emad4798@gmail.com, emd9810@gmail.com]
       password: ${TRACKEY_SMTP_PASSWORD}
   - type: null_subscriber
     listen: [count_exceeded_event]
