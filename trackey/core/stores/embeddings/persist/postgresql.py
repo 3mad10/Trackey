@@ -71,7 +71,11 @@ class PostgresEmbeddingRepository(EmbeddingRepository):
 
 if __name__ == '__main__':
     from uuid import uuid4
-    con = "postgresql://trackey:Mohamed_9810951357@localhost:5432/trackey"
+    import os
+    from dotenv import load_dotenv
+    load_dotenv()
+    password = os.getenv("DATABASE_PASSWORD")
+    con = f"postgresql://trackey:{password}@localhost:5432/trackey"
     db = PostgresEmbeddingRepository(dsn=con, table="people_body_embedding")
     d_body = 128
     d_face = 512

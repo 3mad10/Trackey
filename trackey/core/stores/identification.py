@@ -118,9 +118,13 @@ class CompositeIdentificationStore(IdentificationStore):
     
 if __name__ == '__main__':
     import numpy as np
+    import os
+    from dotenv import load_dotenv
     from trackey.core.stores.embeddings.faiss import FaissEmbeddingStore
     from trackey.core.stores.metadata.postgresql import PostgresIdentityRepository
     from trackey.core.stores.embeddings.persist.postgresql import PostgresEmbeddingRepository
+
+    load_dotenv()
 
     d_body = 128
     d_face = 512
@@ -147,7 +151,8 @@ if __name__ == '__main__':
         'face' : f_store
     }
     uuid_1 = uuid4()
-    con = "postgresql://trackey:Mohamed_9810951357@localhost:5432/trackey"
+    password = os.getenv("DATABASE_PASSWORD")
+    con = f"postgresql://trackey:{password}@localhost:5432/trackey"
     metadata_repo = PostgresIdentityRepository(repo_name="people" , dsn=con)
     embedding_repository = PostgresEmbeddingRepository(dsn=con, table="people_body_embedding")
     comp = CompositeIdentificationStore(embedding_stores=embedding_stores, repository=metadata_repo, embedding_repository=embedding_repository)

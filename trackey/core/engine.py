@@ -162,6 +162,7 @@ class Engine:
 
 
 if __name__ == '__main__':
+    from dotenv import load_dotenv
     from trackey.plugins.io.camera import CameraSourcePlugin
     from trackey.plugins.io.video import VideoSourcePlugin
     from trackey.plugins.io.display import DisplaySinkPlugin
@@ -187,5 +188,7 @@ if __name__ == '__main__':
     #                 renderer=Renderer(),
     #                 scene=scene
     #                 )
+
+    load_dotenv()
     engine = Engine.from_config("base_pipeline.yaml")
     engine.run()

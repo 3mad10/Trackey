@@ -70,9 +70,6 @@ class MailSubscriber(Subscriber):
 
         with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
             server.starttls()
-            # print(f"password: {self.password}")
-            # print(f"sender: {message.sender}")
-            # print(f"to: {message.to}")
             if self.password:
                 server.login(message.sender, self.password)
             server.sendmail(
@@ -84,9 +81,10 @@ class MailSubscriber(Subscriber):
 if __name__ == '__main__':
     from trackey.core.events.types import CountExceededEvent
     from datetime import datetime
+    password = os.getenv("TRACKEY_SMTP_PASSWORD")
     sub = MailSubscriber(["m.emad4798@gmail.com", "m.emad7798@gmail.com"],
                          "m.emad7798@gmail.com",
-                         password="lmaz akkr grbr oags ")
+                         password=password)
     sub.on_event(CountExceededEvent(frame_id=200,
                                     camera_id='1',
                                     timestamp=datetime.now(),

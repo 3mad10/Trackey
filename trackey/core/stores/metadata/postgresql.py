@@ -214,7 +214,11 @@ class PostgresIdentityRepository(IdentityRepository):
 
 if __name__ == '__main__':
     from uuid import uuid4
-    con = "postgresql://trackey:Mohamed_9810951357@localhost:5432/trackey"
+    import os
+    from dotenv import load_dotenv
+    load_dotenv()
+    password = os.getenv("DATABASE_PASSWORD")
+    con = f"postgresql://trackey:{password}@localhost:5432/trackey"
     db = PostgresIdentityRepository(repo_name="people" , dsn=con)
     print(db.load_all())
     print(db.save(Identity(global_id="bf3d9301-36ad-487d-aeb6-8eb4120b434b", label="Mohamed")))
