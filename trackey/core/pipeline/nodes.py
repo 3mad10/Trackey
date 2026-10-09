@@ -224,6 +224,7 @@ class IdentificationNode(PipelineNode):
     def __init__(self, name: str, identifier: Identifier):
         super().__init__(name)
         self.identifier = identifier
+        self._identity_cache = {}
 
     def process(self, ctx: FrameContext) -> FrameContext:
         embeddings = ctx.per_track.get("embeddings", {})
@@ -232,14 +233,30 @@ class IdentificationNode(PipelineNode):
         existing_identities = ctx.per_track.get("identities", {})
         updated_identities = {**existing_identities}
         
+        active_track_ids = set()
+        
         for track in ctx.tracks:
+            active_track_ids.add(track.tracker_id)
+            
+            if track.tracker_id in self._identity_cache:
+                identity = self._identity_cache[track.tracker_id]
+                entry = {**updated_identities.get(track.tracker_id, {}), self.identifier.modality: identity}
+                updated_identities[track.tracker_id] = entry
+                continue
+
             emb = embeddings.get(track.tracker_id, {}).get(self.identifier.modality)
             if emb is None:
                 continue
             identity = self.identifier.identify(emb, now=now)
             if identity:
+                self._identity_cache[track.tracker_id] = identity
                 entry = {**updated_identities.get(track.tracker_id, {}), self.identifier.modality: identity}
                 updated_identities[track.tracker_id] = entry
+
+        # prune cache
+        dead_ids = set(self._identity_cache.keys()) - active_track_ids
+        for tid in dead_ids:
+            del self._identity_cache[tid]
                 
         return replace(ctx, per_track={**ctx.per_track, "identities": updated_identities})
 

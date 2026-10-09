@@ -14,7 +14,7 @@ class NullViewer(OutputSink):
         pass
 
     def open(self) -> bool:
-        pass
+        return True
     
     def write(self, result: PipelineResult) -> None:
         pass

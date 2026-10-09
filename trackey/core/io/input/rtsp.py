@@ -3,7 +3,9 @@ import time
 from urllib.parse import urlparse
 from trackey.core.interfaces.source import InputSource
 from trackey.data.schemas.frame import Frame
+import logging
 
+logger = logging.getLogger(__name__)
 
 class RtspSource(InputSource):
     def __init__(self, url: str, **kwargs):
@@ -62,9 +64,28 @@ class RtspSource(InputSource):
         if not ret or frame is None:
             # stream died or frame decode failed
             self.is_open = False
-            return None
-        h, w = frame.shape[:2]
-        return Frame(frame, width=w, height=h)
+            self.release()
+            
+            # auto-reconnect backoff
+            logger.warning(f"[RtspSource] Connection lost to {self.url}. Attempting to reconnect...")
+            backoff = 1.0
+            for attempt in range(1, 6):
+                time.sleep(backoff)
+                if self.open():
+                    logger.info(f"[RtspSource] Reconnected successfully to {self.url}")
+                    ret, frame = self.cap.read()
+                    if ret and frame is not None:
+                        break
+                backoff = min(backoff * 2, 10.0)
+                logger.warning(f"[RtspSource] Reconnect attempt {attempt} failed.")
+            
+            if not self.is_open:
+                return None
+            
+        if self.width and self.height:
+            frame = cv2.resize(frame, (self.width, self.height))
+            
+        return Frame(frame=frame)
 
     def release(self):
         if self.cap:

@@ -1,5 +1,7 @@
 import logging
 import time
+import threading
+import queue
 from typing import Optional, List
 
 from trackey.core.io.input import *
@@ -15,26 +17,7 @@ from trackey.data.schemas.event import BaseEvent
 from trackey.core.context import FrameContext
 from trackey.data.schemas.frame import Frame
 
-
-
-logging.basicConfig(
-    level=logging.INFO
-)
-
-logger = logging.getLogger()
-formatter = logging.Formatter(
-    "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
-)
-file_handler = logging.FileHandler("trackey.log")
-file_handler.setFormatter(formatter)
-
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(formatter)
-
-logger.addHandler(file_handler)
-logger.addHandler(console_handler)
-
-
+logger = logging.getLogger(__name__)
 class Engine:
     def __init__(self,
                  source:              InputSource,
@@ -75,16 +58,46 @@ class Engine:
     def run(self) -> None:
         self._open_all()
         self._initialize_renderer()
+        
+        self.frame_queue = queue.Queue(maxsize=30)
+        self.running = True
+        
+        capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
+        capture_thread.start()
+        
         try:
-            while True:
+            while self.running:
                 self._process_frame()
         except KeyboardInterrupt:
             logger.info("[Engine] Stopped by user")
+            self.running = False
         except StopIteration:
             logger.info("[Engine] Source exhausted")
+            self.running = False
         finally:
             self._close_all()
-    
+            
+    def _capture_loop(self):
+        while self.running:
+            if self._buffered_frame is not None:
+                frame = self._buffered_frame
+                self._buffered_frame = None
+            else:
+                frame = self.source.read()
+                
+            if frame is None:
+                self.running = False
+                break
+                
+            try:
+                self.frame_queue.put(frame, block=False)
+            except queue.Full:
+                try:
+                    self.frame_queue.get_nowait()
+                    self.frame_queue.put(frame, block=False)
+                except queue.Empty:
+                    pass
+
     def _initialize_renderer(self) -> None:
         if not self.renderer:
             return
@@ -111,7 +124,7 @@ class Engine:
     def _process_frame(self) -> None:
         frame = self._get_next_frame()
         if frame is None:
-            raise StopIteration
+            return
 
         ctx = FrameContext(
             frame_id=self._frame_id,
@@ -134,12 +147,12 @@ class Engine:
         self._frame_id += 1
 
     def _get_next_frame(self) -> Optional[Frame]:
-        # return buffered first frame if available
-        if self._buffered_frame is not None:
-            frame = self._buffered_frame
-            self._buffered_frame = None
-            return frame
-        return self.source.read()
+        try:
+            return self.frame_queue.get(timeout=0.5)
+        except queue.Empty:
+            if not self.running:
+                raise StopIteration
+            return None
 
     def _open_all(self) -> None:
         if not self.source.open():
@@ -161,34 +174,4 @@ class Engine:
 
 
 
-if __name__ == '__main__':
-    from dotenv import load_dotenv
-    from trackey.plugins.io.camera import CameraSourcePlugin
-    from trackey.plugins.io.video import VideoSourcePlugin
-    from trackey.plugins.io.display import DisplaySinkPlugin
-    from trackey.plugins.subscribers.mail import MailSubscriberPlugin
-    from trackey.plugins.subscribers.null import NullSubscriberPlugin
-    from trackey.plugins.stores.postgress_embedding import PostgresEmbeddingRepositoryPlugin
-    from trackey.plugins.stores.postgres import PostgresRepositoryPlugin
-    from trackey.plugins.stores.faiss import FaissEmbeddingStore
-    from trackey.core.io.output.viewer import OpenCVViewer
-    from trackey.core.detectors import YoloDetector
-    from trackey.core.trackers import DeepSortTracker
-    from trackey.core.recognition.person.osnet import OsNetReid
-    from trackey.core.analyzers import Counter
-    from trackey.core.rendering.opencv_renderer import OpenCVRenderer
-    from trackey.core.events.types import CountExceededEvent
-    from trackey.core.recognition.face.retina import RetinaFaceDetector
-    # scene = SceneBuilder(cfg_path="base_pipeline.yaml").build()
-    # pipeline_builder = PipelineBuilder(cfg_path="base_pipeline.yaml", scene=scene)
-    # pipeline = PipelineExecutor(pipeline_builder.build())
-    # engine = Engine(source=CameraSource(device_id=0),
-    #                 pipeline=pipeline,
-    #                 viewer=OpenCVViewer(),
-    #                 renderer=Renderer(),
-    #                 scene=scene
-    #                 )
 
-    load_dotenv()
-    engine = Engine.from_config("base_pipeline.yaml")
-    engine.run()

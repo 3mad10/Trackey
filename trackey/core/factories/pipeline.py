@@ -112,8 +112,11 @@ class PipelineBuilder(Builder):
                 f"{self.PIPELINE_STRUCTURE}"
             )
 
+        seen_names = set()
         for node_cfg in nodes_cfg:
-            self._validate_node_cfg(node_cfg)
+            self._validate_node_cfg(node_cfg, seen_names)
+            seen_names.add(node_cfg.get("name"))
+            
         self._validate_primary_source()
         for node_cfg in nodes_cfg:
             node = self._build_node(node_cfg)
@@ -290,7 +293,7 @@ class PipelineBuilder(Builder):
     # Validation                                                           #
     # ------------------------------------------------------------------ #
 
-    def _validate_node_cfg(self, node_cfg: dict) -> None:
+    def _validate_node_cfg(self, node_cfg: dict, seen_names: set) -> None:
         if not isinstance(node_cfg, dict):
             raise TypeError(
                 f"[PipelineBuilder] Each node must be a dict.\n"
@@ -309,7 +312,7 @@ class PipelineBuilder(Builder):
         node_type = node_cfg["type"]
 
         # duplicate name check
-        if node_name in self.nodes:
+        if node_name in seen_names:
             raise ValueError(
                 f"[PipelineBuilder] Duplicate node name: '{node_name}'"
             )
@@ -430,23 +433,4 @@ class PipelineBuilder(Builder):
 
 
 
-if __name__ == '__main__':
-    # Example: ensure detector/tracker classes are imported to register
-    from trackey.core.detectors.yolo import YoloDetector
-    from trackey.core.features.mediapipe import MPLandmarkDetector
-    from trackey.core.trackers.deepsort import DeepSortTracker
 
-    builder = PipelineBuilder('../base_pipeline.yaml')
-    print("Pipeline order:", builder.get_pipeline_order())
-
-    # Example: insert a new detector after 'detector1'
-    new_node = {
-        "name": "detector2",
-        "component": "detector",
-        "type": "yolo",
-        "params": {"weights": "yolov8s.pt"}
-    }
-    builder.insert_node(new_node, after_node="detector")
-    print("Pipeline order after insertion:", builder.get_pipeline_order())
-    builder.remove_node(node_name="detector2")
-    print("Pipeline order after removal:", builder.get_pipeline_order())

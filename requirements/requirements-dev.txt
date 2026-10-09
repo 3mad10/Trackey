@@ -1,7 +1,0 @@
-jupyterlab
-notebook
-ipykernel
-pytest
-black
-flake8
-mypy

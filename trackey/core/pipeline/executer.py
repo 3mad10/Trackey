@@ -8,6 +8,7 @@ from trackey.core.interfaces.node import PipelineNode
 from trackey.core.context import FrameContext
 from trackey.core.pipeline.edge import Edge
 from trackey.core.pipeline.constants import SKIP_BRANCH
+from trackey.core.scene.mappings import ZoneMemberships
 
 logger = logging.getLogger(__name__)
 
@@ -74,9 +75,6 @@ class PipelineExecutor:
                     f"latency.{node_name}": round(elapsed * 1000, 2)
                 }
             )
-            print("latency")
-            print(out_ctx.metadata)
-
             results[node_name] = out_ctx
 
             # handle branch routing
@@ -142,13 +140,36 @@ class PipelineExecutor:
 
     def _merge(self, ctxs: List[FrameContext]) -> FrameContext:
         base = ctxs[0]
+        
+        # Merge tracks properly using a dictionary to deduplicate by tracker_id
+        merged_tracks = {}
+        for c in ctxs:
+            for t in c.tracks:
+                if t.tracker_id not in merged_tracks or t.last_seen > merged_tracks[t.tracker_id].last_seen:
+                    merged_tracks[t.tracker_id] = t
+        
+        # ZoneMemberships is a dataclass (not a dict) — merge its inner dicts
+        merged_by_track = {}
+        merged_by_zone  = {}
+        for c in ctxs:
+            merged_by_track.update(c.zone_memberships.by_track)
+            merged_by_zone.update(c.zone_memberships.by_zone)
+
         return replace(
             base,
             detections={
                 k: v for c in ctxs
                 for k, v in c.detections.items()
             },
-            tracks=[t for c in ctxs for t in c.tracks],
+            tracks=list(merged_tracks.values()),
+            per_track={
+                k: v for c in ctxs
+                for k, v in c.per_track.items()
+            },
+            zone_memberships=ZoneMemberships(
+                by_track=merged_by_track,
+                by_zone=merged_by_zone
+            ),
             events=[e for c in ctxs for e in c.events],
             analytics={
                 k: v for c in ctxs

@@ -12,7 +12,12 @@ dependencies = [
     "pydantic>=2.0.0",
     "requests==2.32.3",
     "scipy==1.14.1",
+    "prometheus-client>=0.20.0",
+    "python-json-logger>=2.0.0",
 ]
+
+[project.scripts]
+trackey = "trackey.cli:main"
 
 [project.optional-dependencies]
 detection = [
@@ -27,6 +32,8 @@ tracking = [
 reid = [
     "trackey[tracking]",
     "yacs==0.1.8",
+    # torchreid is installed by scripts/install.sh using --no-build-isolation
+    # because its old setup.py requires numpy at build time.
 ]
 face = [
     "mediapipe==0.10.21",

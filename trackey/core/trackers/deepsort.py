@@ -57,28 +57,25 @@ class DeepSortTracker(Tracker):
         return ds_inputs
     
     def _wrap_tracks(self, ds_tracks, frame: Frame):
-
         tracks = []
-
         now = datetime.now(timezone.utc)
+        active_ids = set()
 
         for ds_track in ds_tracks:
-
+            active_ids.add(ds_track.track_id)
             if self._skip_track(ds_track):
                 continue
             
             bbox = self._get_bbox(ds_track, frame=frame)
             if self._track_exist(ds_track.track_id):
                 track: Track = self.tracks[ds_track.track_id]
+                self._update_history(track.history, bbox)
                 track = replace(
                     track,
                     bbox=bbox,
-                    history=self._update_history(track.history, bbox),
                     age=ds_track.age,
                     last_seen=now,
                 )
-                # print("asdsaddasasdasd")
-                # print(track)
                 tracks.append(track)
             else:
                 track: Track = Track(
@@ -92,16 +89,18 @@ class DeepSortTracker(Tracker):
                 tracks.append(track)
             self.tracks[ds_track.track_id] = track
 
+        # Prune dead tracks
+        dead_ids = set(self.tracks.keys()) - active_ids
+        for tid in dead_ids:
+            del self.tracks[tid]
+
         return tracks
-    
+
     def _update_history(self, history, bbox):
+        # Mutate the deque in place as the reviewer suggested
+        history.append(bbox)
+        return history
 
-        new_history = deque(history, maxlen=history.maxlen)
-
-        new_history.append(bbox)
-
-        return new_history
-    
     def _track_exist(self, track_id):
         return track_id in self.tracks
 

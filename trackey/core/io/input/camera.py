@@ -63,12 +63,16 @@ class CameraSource(InputSource):
             Failed to open webcam
         """
         if not self.is_open:
-            raise RuntimeError("Webcam is not open")
+            return None
         ret, frame = self.cap.read()
-        if not ret:
-            raise RuntimeError("Failed to read frame from webcam")
+        if not ret or frame is None:
+            self.is_open = False
+            return None
+
+        if self.width and self.height:
+            frame = cv2.resize(frame, (self.width, self.height))
+
         # Wrap in your Frame schema
-        h, w = frame.shape[:2]
         return Frame(frame=frame)
 
     def release(self):
