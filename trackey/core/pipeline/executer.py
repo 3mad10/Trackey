@@ -154,7 +154,15 @@ class PipelineExecutor:
         for c in ctxs:
             merged_by_track.update(c.zone_memberships.by_track)
             merged_by_zone.update(c.zone_memberships.by_zone)
+        merged_per_track = {}
 
+        for c in ctxs:
+            for track_id, track_data in c.per_track.items():
+                if track_id not in merged_per_track:
+                    merged_per_track[track_id] = dict(track_data)
+                else:
+                    merged_per_track[track_id].update(track_data)
+                    
         return replace(
             base,
             detections={
@@ -162,10 +170,7 @@ class PipelineExecutor:
                 for k, v in c.detections.items()
             },
             tracks=list(merged_tracks.values()),
-            per_track={
-                k: v for c in ctxs
-                for k, v in c.per_track.items()
-            },
+            per_track=merged_per_track,
             zone_memberships=ZoneMemberships(
                 by_track=merged_by_track,
                 by_zone=merged_by_zone

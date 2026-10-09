@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
-from typing import Tuple
+from typing import Tuple, Any, Dict, List, Optional
 
 
 class DetectionSource:
@@ -50,13 +50,18 @@ class BoundingBox(BaseModel):
         y1 = self.cy - self.h / 2
         return x1, y1, self.w, self.h
 
-    def to_pixel_xyxy(self, img_w: int, img_h: int) -> Tuple[int, int, int, int]:
+    def to_pixel_xyxy(
+        self,
+        img_w: int,
+        img_h: int,
+    ) -> Tuple[int, int, int, int]:
         x1, y1, x2, y2 = self.xyxy
+
         return (
-            int(x1 * img_w),
-            int(y1 * img_h),
-            int(x2 * img_w),
-            int(y2 * img_h),
+            max(0, min(img_w, int(x1 * img_w))),
+            max(0, min(img_h, int(y1 * img_h))),
+            max(0, min(img_w, int(x2 * img_w))),
+            max(0, min(img_h, int(y2 * img_h))),
         )
 
     def to_pixel_xywh(self, img_w: int, img_h: int) -> Tuple[int, int, int, int]:
@@ -70,11 +75,28 @@ class BoundingBox(BaseModel):
 
 class Detection(BaseModel):
     id: UUID = Field(default_factory=uuid4)
+
     class_id: int = Field(ge=0)
-    class_name: str = Field(max_length=512, description="Class label name")
+    class_name: str = Field(
+        max_length=512,
+        description="Class label name",
+    )
     confidence: float = Field(ge=0, le=1)
 
     bbox: BoundingBox
 
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Optional landmark/keypoint data.
+    keypoints: Optional[List[List[float]]] = Field(
+        default=None,
+        description="Optional keypoints, represented as coordinate vectors.",
+    )
 
+    # Model-specific attributes that don't belong in the core schema.
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Additional model-specific detection attributes.",
+    )
+
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )

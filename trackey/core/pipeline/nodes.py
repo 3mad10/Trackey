@@ -18,10 +18,24 @@ from trackey.core.recognition.identifier import Identifier
 
 class ZoneFilterMixin:
     def filter_tracks(self, ctx: FrameContext) -> List[Track]:
-        if self.zone_name:
-            track_ids = ctx.zone_memberships.by_zone.get(self.zone_name, [])
-            return [t for t in ctx.tracks if t.tracker_id in track_ids]
-        return ctx.tracks
+        if not self.zone_name:
+            return ctx.tracks
+
+        if ctx.zone_memberships is None:
+            raise RuntimeError(
+                f"{self.name}: zone filtering requires zone_memberships, "
+                "but no memberships are available in the current context."
+            )
+
+        track_ids = ctx.zone_memberships.by_zone.get(
+            self.zone_name, []
+        )
+
+        return [
+            track
+            for track in ctx.tracks
+            if track.tracker_id in track_ids
+        ]
 
 
 class DetectorNode(PipelineNode):
@@ -79,31 +93,59 @@ class AnalyzerNode(PipelineNode, ZoneFilterMixin):
 
 
 class EmbeddingNode(PipelineNode, ZoneFilterMixin):
-    """Feature extraction only — writes per_track.embeddings[tracker_id][modality].
-    Does NOT assign identity; that's ReIdentificationNode's job, downstream."""
+    """Feature extraction only.
 
-    def __init__(self, name: str, extractor: FeatureExtractor, modality: str, zone_name: Optional[str] = None):
+    Writes per_track.embeddings[tracker_id][modality].
+    Does NOT assign identity; that's IdentificationNode's job.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        extractor: FeatureExtractor,
+        modality: str,
+        zone_name: Optional[str] = None,
+    ):
         super().__init__(name)
         self.extractor = extractor
         self.modality = modality
         self.zone_name = zone_name
 
     def process(self, ctx: FrameContext) -> FrameContext:
+        # Zone filtering is only possible when a zone is configured.
         tracks = self.filter_tracks(ctx)
-        embeddings = self.extractor.extract(tracks, ctx.frame)  # same length/order as tracks; None per failed extraction
+
+        embeddings = self.extractor.extract(tracks, ctx.frame)
 
         existing = ctx.per_track.get("embeddings", {})
-        updated = {**existing}
+        updated = dict(existing)
+
         for track, emb in zip(tracks, embeddings):
             if emb is None:
                 continue
-            entry = {**updated.get(track.tracker_id, {}), self.modality: emb}
+
+            entry = {
+                **updated.get(track.tracker_id, {}),
+                self.modality: emb,
+            }
             updated[track.tracker_id] = entry
 
-        return replace(ctx, per_track={**ctx.per_track, "embeddings": updated})
+        return replace(
+            ctx,
+            per_track={
+                **ctx.per_track,
+                "embeddings": updated,
+            },
+        )
 
     def get_inputs(self) -> List[str]:
-        return ["tracks", "frame", "zone_memberships"]
+        required = ["tracks", "frame"]
+
+        # Zone memberships are required only when filtering by a zone.
+        if self.zone_name:
+            required.append("zone_memberships")
+
+        return required
 
     def get_outputs(self) -> List[str]:
         return ["per_track.embeddings"]

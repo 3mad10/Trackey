@@ -3,6 +3,12 @@ import os
 import logging
 import numpy as np
 
+
+from dataclasses import fields, is_dataclass
+from datetime import date, datetime
+from enum import Enum
+from typing import Any
+from uuid import UUID
 from typing import List, Optional
 
 from trackey.core.interfaces.subscriber import Subscriber
@@ -10,12 +16,10 @@ from trackey.core.events.mails.message import MailMessage
 from trackey.data.schemas.event import BaseEvent
 from email.mime.text import MIMEText
 
+from trackey.data.schemas.frame import Frame
 
-logging.basicConfig(
-    level=logging.INFO
-)
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 formatter = logging.Formatter(
     "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
 )
@@ -50,16 +54,76 @@ class MailSubscriber(Subscriber):
             body=self._build_body(event)
         )
 
+    def _format_value(self, value: Any) -> str:
+        """Convert an event field into a compact, readable email value."""
+
+        # Avoid embedding image/frame data in email notifications.
+        if isinstance(value, Frame):
+            return "<Frame omitted>"
+
+        # Avoid dumping image arrays, embeddings, or other large numeric data.
+        if isinstance(value, np.ndarray):
+            return (
+                f"<ndarray shape={value.shape}, "
+                f"dtype={value.dtype}, omitted>"
+            )
+
+        if isinstance(value, np.generic):
+            return str(value.item())
+
+        if value is None:
+            return "None"
+
+        if isinstance(value, Enum):
+            return str(value.value)
+
+        if isinstance(value, (datetime, date, UUID)):
+            return str(value)
+
+        # Handle Pydantic models.
+        if hasattr(value, "model_dump") and callable(value.model_dump):
+            return self._format_value(value.model_dump(mode="json"))
+
+        # Handle dataclasses without converting large nested values blindly.
+        if is_dataclass(value) and not isinstance(value, type):
+            items = (
+                f"{item.name}={self._format_value(getattr(value, item.name))}"
+                for item in fields(value)
+            )
+            return "{" + ", ".join(items) + "}"
+
+        if isinstance(value, dict):
+            items = (
+                f"{key}: {self._format_value(item)}"
+                for key, item in value.items()
+            )
+            return "{" + ", ".join(items) + "}"
+
+        if isinstance(value, (list, tuple, set)):
+            return "[" + ", ".join(
+                self._format_value(item) for item in value
+            ) + "]"
+
+        # Avoid accidentally including multi-line output in an email field.
+        return str(value).replace("\r", "\\r").replace("\n", "\\n")
+
+
     def _build_body(self, event: BaseEvent) -> str:
         lines = [
+            f"Event:     {type(event).__name__}",
             f"Camera:    {event.camera_id}",
             f"Frame:     {event.frame_id}",
             f"Timestamp: {event.timestamp}",
         ]
+
+        excluded_fields = {"camera_id", "frame_id", "timestamp"}
+
         for field, value in event.__dict__.items():
-            if field not in ("camera_id", "frame_id", "timestamp"):
-                if not isinstance(value, np.ndarray):
-                    lines.append(f"{field}: {value}")
+            if field in excluded_fields or field.startswith("_"):
+                continue
+
+            lines.append(f"{field}: {self._format_value(value)}")
+
         return "\n".join(lines)
 
     def _send(self, message: MailMessage) -> None:

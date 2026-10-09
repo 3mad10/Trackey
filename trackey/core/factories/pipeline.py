@@ -398,37 +398,87 @@ class PipelineBuilder(Builder):
             )
 
     def _validate_wiring(self) -> None:
-        available = {"frame", "frame_id", "camera_id", "timestamp"}
-        order     = topological_sort(list(self.nodes.keys()), self.edges)
+        base_inputs = {"frame", "frame_id", "camera_id", "timestamp"}
+
+        order = topological_sort(list(self.nodes.keys()), self.edges)
+
+        # Build the direct-parent map from the actual graph.
+        parents: Dict[str, List[str]] = {
+            node_name: [] for node_name in self.nodes
+        }
+
+        for edge in self.edges:
+            parents[edge.target].append(edge.source)
+
+        # Available inputs after processing each node.
+        # Each entry contains base inputs and outputs from its ancestors,
+        # including the node itself.
+        available_after: Dict[str, set] = {}
 
         for node_name in order:
             node = self.nodes[node_name]
+
+            # Only inherit inputs from direct parents and their ancestors.
+            available = set(base_inputs)
+
+            for parent_name in parents[node_name]:
+                available.update(available_after[parent_name])
+
             for required in node.get_inputs():
                 if not self._is_satisfied(required, available):
                     producer = self._find_producer(required)
+
                     raise ValueError(
                         f"[PipelineBuilder] Node '{node_name}' requires "
-                        f"'{required}' which is not available upstream.\n"
+                        f"'{required}', but it is not available from its "
+                        f"upstream dependencies.\n"
                         + (
-                            f"Hint: add '{producer}' before '{node_name}'."
-                            if producer else
-                            f"No node produces '{required}'."
+                            f"Hint: node '{producer}' produces a matching "
+                            f"output, but it is not necessarily upstream "
+                            f"of '{node_name}'. Check the pipeline edges."
+                            if producer
+                            else f"No node produces '{required}'."
                         )
                     )
-            for output in node.get_outputs():
-                available.add(output)
+
+            # Record the inputs available after this node executes.
+            available.update(node.get_outputs())
+            available_after[node_name] = available
+
 
     def _is_satisfied(self, required: str, available: set) -> bool:
-        if required in available:
-            return True
-        # prefix match — "analytics.counter" satisfied by "analytics"
-        return any(required.startswith(item) for item in available)
+        """
+        Check whether an available output satisfies a required input.
 
-    def _find_producer(self, required):
+        Exact matches are accepted. A dotted namespace can also satisfy
+        a descendant requirement:
+            available: analytics
+            required:  analytics.counter
+
+        Partial segment matches are rejected:
+            available: analytics.counter
+            required:  analytics.counter_extra
+        """
+        for item in available:
+            if required == item:
+                return True
+
+            if required.startswith(item + "."):
+                return True
+
+        return False
+
+
+    def _find_producer(self, required: str) -> Optional[str]:
+        """Find a node that produces an output matching the input contract."""
         for node in self.nodes.values():
             for output in node.get_outputs():
-                if required.startswith(output):
+                if (
+                    required == output
+                    or required.startswith(output + ".")
+                ):
                     return node.name
+
         return None
 
 

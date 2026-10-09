@@ -13,6 +13,7 @@ def register_builtins():
         from trackey.plugins.io.camera import CameraSourcePlugin
         from trackey.plugins.io.video import VideoSourcePlugin
         from trackey.plugins.io.display import DisplaySinkPlugin
+        from trackey.plugins.io.rtsp import RtspSourcePlugin
         
         # Subscribers
         from trackey.plugins.subscribers.mail import MailSubscriberPlugin
@@ -22,7 +23,7 @@ def register_builtins():
         # Stores
         from trackey.plugins.stores.postgress_embedding import PostgresEmbeddingRepositoryPlugin
         from trackey.plugins.stores.postgres import PostgresRepositoryPlugin
-        from trackey.plugins.stores.faiss import FaissEmbeddingStore
+        from trackey.plugins.stores.faiss import FaissPlugin
         
         # Core Components (Detectors, Trackers, Analyzers, etc)
         from trackey.core.io.output.viewer import OpenCVViewer

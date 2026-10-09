@@ -14,7 +14,7 @@ class EventBusBuilder(Builder):
     SUB_CFG_FORMAT = (
         "subscribers:\n"
         "  - type: <subscriber-type>\n"
-        "    on: [event_name_1, event_name_2]\n"
+        "    listen: [event_name_1, event_name_2]\n"
         "    params:\n"
         "      <subscriber-specific-params>\n"
         "\n"
