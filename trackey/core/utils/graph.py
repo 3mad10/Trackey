@@ -1,7 +1,7 @@
 # trackey/core/pipeline/graph.py
 
 from collections import defaultdict, deque
-from typing import List, Dict
+from typing import List
 from trackey.core.pipeline.edge import Edge
 
 

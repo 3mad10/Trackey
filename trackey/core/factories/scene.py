@@ -1,6 +1,4 @@
-import yaml
 import logging
-from pathlib import Path
 from trackey.core.scene.scene import Scene
 from trackey.data.schemas.geometry import Zone, Line, Polygon
 from trackey.core.factories.builder import Builder
@@ -9,7 +7,7 @@ from trackey.core.factories.builder import Builder
 logger = logging.getLogger(__name__)
 
 class SceneBuilder(Builder):
-    SCENE_CFG_FORMAT = f" \
+    SCENE_CFG_FORMAT = " \
     scene:\
         - zones: \
             - name: <zone-name> \
@@ -26,7 +24,7 @@ class SceneBuilder(Builder):
     def build(self):
         scene = self._build_scene()
         return scene
-    
+
     def _build_scene(self):
         """Build all nodes from the loaded YAML in order."""
         zones=[]
@@ -35,7 +33,7 @@ class SceneBuilder(Builder):
         if not isinstance(scene, dict):
             raise TypeError(f"[SceneBuilder] Scene must be in the following format \
              {self.SCENE_CFG_FORMAT}")
-        
+
         if "zones" in scene:
             for zone_cfg in scene["zones"]:
                 zones.append(self._build_zone(zone_cfg))
@@ -43,7 +41,7 @@ class SceneBuilder(Builder):
             for line_cfg in scene["lines"]:
                 lines.append(self._build_line(line_cfg))
         return Scene(zones=zones, lines=lines)
-        
+
     def _build_zone(self, zone_cfg):
         if "name" not in zone_cfg:
             raise ValueError(f"[SceneBuilder] Zone must contain a unique name \
@@ -58,7 +56,7 @@ class SceneBuilder(Builder):
                 'polygon': Polygon(points=zone_cfg["polygon"])
             }
         )
-    
+
     def _build_line(self, line_cfg):
         if "name" not in line_cfg:
             raise ValueError("[SceneBuilder] Line must contain a unique name")

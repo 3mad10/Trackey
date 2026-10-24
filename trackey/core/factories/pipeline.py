@@ -5,7 +5,6 @@ from trackey.core.registries.detection import DETECTOR_REGISTRY
 from trackey.core.registries.tracking  import TRACKER_REGISTRY
 from trackey.core.registries.analyzer  import ANALYZER_REGISTRY
 from trackey.core.registries.reid      import REID_REGISTRY
-from trackey.core.registries.node      import NODE_REGISTRY
 from trackey.core.scene.scene          import Scene
 from trackey.core.events.bus           import EventBus
 from trackey.core.pipeline.edge        import Edge
@@ -65,7 +64,7 @@ class PipelineBuilder(Builder):
         "identify":      "_build_identify_node",
         "identity_manager": "_build_identity_manager_node",
     }
-                              
+
     def __init__(self, cfg_path: str,
                  scene:     Scene,
                  event_bus: EventBus,
@@ -116,7 +115,7 @@ class PipelineBuilder(Builder):
         for node_cfg in nodes_cfg:
             self._validate_node_cfg(node_cfg, seen_names)
             seen_names.add(node_cfg.get("name"))
-            
+
         self._validate_primary_source()
         for node_cfg in nodes_cfg:
             node = self._build_node(node_cfg)
@@ -132,7 +131,7 @@ class PipelineBuilder(Builder):
                 source=edge_cfg["from"],
                 target=edge_cfg["to"]
             ))
-    
+
 
     def _build_node(self, node_cfg: dict) -> PipelineNode:
         node_type    = node_cfg["type"]
@@ -144,7 +143,7 @@ class PipelineBuilder(Builder):
             f"{node_cfg['name']} ({node_type})"
         )
         return node
-    
+
     # ------------------------------------------------------------------ #
     # Processing node builders                                             #
     # ------------------------------------------------------------------ #
@@ -172,7 +171,6 @@ class PipelineBuilder(Builder):
     def _build_reid_node(self, node_cfg: dict):
         from trackey.core.pipeline.nodes import EmbeddingNode
         component = self._build_component(node_cfg)
-        params = node_cfg.get("params") or {}
         return EmbeddingNode(
             name=node_cfg["name"],
             extractor=component,
@@ -219,7 +217,7 @@ class PipelineBuilder(Builder):
             definitions=definitions,
             event_bus=self.event_bus
         )
-    
+
     def _build_identify_node(self, node_cfg: dict):
         from trackey.core.pipeline.nodes import IdentificationNode
         from trackey.core.recognition.identifier import Identifier
@@ -288,7 +286,7 @@ class PipelineBuilder(Builder):
                 extract=event_cfg.get("extract", {})
             ))
         return definitions
-    
+
     # ------------------------------------------------------------------ #
     # Validation                                                           #
     # ------------------------------------------------------------------ #
@@ -335,11 +333,11 @@ class PipelineBuilder(Builder):
     def _validate_primary_source(self) -> None:
         if "primary" not in self.detection_sources:
             raise ValueError(
-                f"[PipelineBuilder] Missing detector node with source = primary "
-                f"There must be one node and one node only with source = primary"
-                f"Which will be passed to the Tracker node as input"
-                f"Other nodes of type detector can have any source value"
-                f"but the source value must be unique across detector nodes"
+                "[PipelineBuilder] Missing detector node with source = primary "
+                "There must be one node and one node only with source = primary"
+                "Which will be passed to the Tracker node as input"
+                "Other nodes of type detector can have any source value"
+                "but the source value must be unique across detector nodes"
             )
     def _validate_source(self, node_cfg: dict) -> None:
         if "source" not in node_cfg:
@@ -353,7 +351,7 @@ class PipelineBuilder(Builder):
         detection_source: str = node_cfg["source"]
         if detection_source in self.detection_sources:
             raise ValueError(
-                f"[PipelineBuilder] Detection Source already defined: 'detection_source'. "
+                "[PipelineBuilder] Detection Source already defined: 'detection_source'. "
             )
         self.detection_sources.append(detection_source)
 

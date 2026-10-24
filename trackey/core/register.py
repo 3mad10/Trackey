@@ -16,7 +16,6 @@ from trackey.core.interfaces.analyzer   import Analyzer
 from trackey.core.interfaces.node       import PipelineNode
 from trackey.core.interfaces.renderer   import Renderer
 from trackey.core.interfaces.extractor  import FeatureExtractor
-from trackey.core.interfaces.store      import IdentificationStore, IdentityRepository, EmbeddingStore
 from trackey.data.schemas.event         import BaseEvent
 
 from trackey.plugins.io.source              import SourcePlugin

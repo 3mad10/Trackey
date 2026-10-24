@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: trackey-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: trackey
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-trackey}
+      POSTGRES_DB: trackey
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trackey -d trackey"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  trackey:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trackey-pipeline
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+      - ./trackey.log:/app/trackey.log
+    ports:
+      - "8000:8000"  # Prometheus metrics port
+    environment:
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  postgres_data:

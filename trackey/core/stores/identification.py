@@ -63,7 +63,7 @@ class CompositeIdentificationStore(IdentificationStore):
             pairs.append((new_id, added))
             if self._embedding_repository is not None:
                 self._embedding_repository.save(new_id, identity.global_id, modality, added)
-            
+
     def get(self, global_id):
         return self._repository.load(global_id)
 
@@ -76,13 +76,13 @@ class CompositeIdentificationStore(IdentificationStore):
             for e in embeddings:
                 identity.add_embedding(modality, e)
             self.register(identity)
-    
+
     def _find_id_for_vector(self, pairs: List[Tuple[int, np.ndarray]], target: np.ndarray) -> Optional[int]:
         for int_id, vec in pairs:
             if np.array_equal(vec, target):
                 return int_id
         return None
-    
+
     def _rebuild_from_repository(self):
         max_id_per_modality: Dict[str, int] = {}
 
@@ -100,7 +100,7 @@ class CompositeIdentificationStore(IdentificationStore):
 
         for modality in self._embedding_stores:
             self._next_int_id[modality] = max_id_per_modality.get(modality, -1) + 1
-    
+
     def _add_embeddings(self, global_id: UUID, modality: str, embs: List[np.ndarray]) -> None:
         vec_store = self._embedding_stores.get(modality)
         if vec_store is None:
@@ -115,7 +115,7 @@ class CompositeIdentificationStore(IdentificationStore):
             if self._embedding_repository is not None:
                 self._embedding_repository.save(new_id, global_id, modality, emb)
 
-    
+
 if __name__ == '__main__':
     import numpy as np
     import os

@@ -1,8 +1,4 @@
-import cv2
 import logging
-import numpy as np
-from uuid import UUID
-from typing import Union, Optional, List
 
 from trackey.core.interfaces.sink import OutputSink
 from trackey.data.schemas.pipeline import PipelineResult
@@ -15,7 +11,7 @@ class NullViewer(OutputSink):
 
     def open(self) -> bool:
         return True
-    
+
     def write(self, result: PipelineResult) -> None:
         pass
 

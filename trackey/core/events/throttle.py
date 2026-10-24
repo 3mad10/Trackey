@@ -17,7 +17,7 @@ class ThrottledSubscriber(Subscriber):
             return
         self._subscriber.on_event(event)
         self._last_fired[(type(event), event.camera_id)] = time.monotonic()
-    
+
     def _should_fire(self, event: BaseEvent) -> bool:
         if self.throttle_seconds <= 0:
             return True

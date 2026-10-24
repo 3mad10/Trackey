@@ -1,7 +1,5 @@
-import json
 import logging
 import numpy as np
-from datetime import datetime
 from typing import Optional, List, Tuple
 from uuid import UUID
 
@@ -13,17 +11,17 @@ except ImportError:
     sql = None
 
 from trackey.core.interfaces.store import EmbeddingRepository
-from trackey.data.schemas.identity import Identity
 
 
 logger = logging.getLogger(__name__)
 
 
 class PostgresEmbeddingRepository(EmbeddingRepository):
-    def __init__(self, dsn: str, table: str = "embeddings"):
+    def __init__(self, dsn: str, table: str = "embeddings", retention_days: Optional[int] = None):
         if psycopg2 is None:
             raise ImportError("PostgreSQL backend requires 'psycopg2-binary' to be installed.")
         self.table = table
+        self.retention_days = retention_days
         self._conn = psycopg2.connect(dsn)
         self._initialize()
 
@@ -35,14 +33,33 @@ class PostgresEmbeddingRepository(EmbeddingRepository):
                     global_id   UUID NOT NULL,
                     modality    TEXT NOT NULL,
                     vector      BYTEA NOT NULL,
-                    PRIMARY KEY (id, modality),
-                    created_at  TIMESTAMPTZ DEFAULT now()
+                    created_at  TIMESTAMPTZ DEFAULT now(),
+                    PRIMARY KEY (id, modality)
                 )
             """).format(sql.Identifier(self.table)))
             cur.execute(sql.SQL(
                 "CREATE INDEX IF NOT EXISTS {} ON {} (global_id)"
             ).format(sql.Identifier(f"{self.table}_global_id_idx"), sql.Identifier(self.table)))
         self._conn.commit()
+        if self.retention_days is not None:
+            self.purge_expired()
+
+    def purge_expired(self) -> None:
+        """Delete rows whose created_at is older than retention_days."""
+        if self.retention_days is None:
+            return
+        with self._conn.cursor() as cur:
+            cur.execute(
+                sql.SQL("DELETE FROM {} WHERE created_at < NOW() - INTERVAL %s")
+                .format(sql.Identifier(self.table)),
+                (f"{self.retention_days} days",),
+            )
+            deleted = cur.rowcount
+        self._conn.commit()
+        if deleted > 0:
+            logger.info(
+                f"[PostgresEmbeddingRepository] purge_expired: removed {deleted} rows older than {self.retention_days} days"
+            )
 
     def save(self, id: int, global_id: UUID, modality: str, vector: np.ndarray) -> None:
         with self._conn.cursor() as cur:
@@ -93,4 +110,4 @@ if __name__ == '__main__':
     # db.save(1, current_body, modality='face', vector=xb_face[0])
     # db.save(1, current_body, modality='body', vector=xb_body[0])
     print(db.load_all())
-    
+

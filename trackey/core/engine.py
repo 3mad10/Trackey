@@ -4,11 +4,14 @@ import threading
 import queue
 from typing import Optional, List
 
-from trackey.core.io.input import *
-from trackey.core.io.output.viewer import *
-from trackey.core.interfaces import *
-from trackey.core.pipeline import PipelineExecutor
-from trackey.core.factories import *
+from trackey.core.pipeline.executer import PipelineExecutor
+from trackey.core.factories.scene import SceneBuilder
+from trackey.core.factories.source import SourceBuilder
+from trackey.core.factories.event_bus import EventBusBuilder
+from trackey.core.factories.store import StoreBuilder
+from trackey.core.factories.pipeline import PipelineBuilder
+from trackey.core.factories.renderer import RendererBuilder
+from trackey.core.factories.sink import SinkBuilder
 from trackey.core.interfaces.sink import OutputSink
 from trackey.core.interfaces.source import InputSource
 from trackey.core.interfaces.renderer import Renderer
@@ -44,7 +47,7 @@ class Engine:
         nodes, edges    = PipelineBuilder(cfg_path, scene, event_bus, stores).build()
         renderer        = RendererBuilder(cfg_path, scene).build()
         sinks           = SinkBuilder(cfg_path).build()
-        
+
         pipeline = PipelineExecutor(nodes, edges)
 
         return cls(
@@ -58,13 +61,13 @@ class Engine:
     def run(self) -> None:
         self._open_all()
         self._initialize_renderer()
-        
+
         self.frame_queue = queue.Queue(maxsize=30)
         self.running = True
-        
+
         capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
         capture_thread.start()
-        
+
         try:
             while self.running:
                 self._process_frame()
@@ -76,7 +79,7 @@ class Engine:
             self.running = False
         finally:
             self._close_all()
-            
+
     def _capture_loop(self):
         while self.running:
             if self._buffered_frame is not None:
@@ -84,11 +87,11 @@ class Engine:
                 self._buffered_frame = None
             else:
                 frame = self.source.read()
-                
+
             if frame is None:
                 self.running = False
                 break
-                
+
             try:
                 self.frame_queue.put(frame, block=False)
             except queue.Full:
@@ -157,7 +160,7 @@ class Engine:
     def _open_all(self) -> None:
         if not self.source.open():
             raise RuntimeError(
-                f"[Engine] Failed to open source"
+                "[Engine] Failed to open source"
             )
         for sink in self.sinks:
             if not sink.open():

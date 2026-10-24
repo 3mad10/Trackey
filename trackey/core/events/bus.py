@@ -27,7 +27,7 @@ class EventBus:
 
     def publish(self, event: BaseEvent) -> None:
         self.event_queue.put(event)
-    
+
     def _worker(self):
         while self.running:
             try:

@@ -3,4 +3,5 @@ from .scene import Scene
 
 __all__ = [
     "ZoneMemberships",
+    "Scene",
 ]

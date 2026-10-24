@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import List, Optional, Dict
+from uuid import UUID
 
 from trackey.data.schemas.identity import Identity
 from trackey.core.interfaces.store import IdentityRepository
@@ -18,12 +19,12 @@ class MemoryRepository(IdentityRepository):
 
     def load(self, global_id: UUID) -> Optional[Identity]:
         return self._identities.get(global_id)
-    
+
     def load_all(self) -> List[Identity]:
         return list(self._identities.values())
 
     def find_by_label(self, label: str) -> Optional[Identity]:
-        if not label in self._label_to_identities:
+        if label not in self._label_to_identities:
             return None
         return self._label_to_identities[label]
 

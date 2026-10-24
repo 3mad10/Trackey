@@ -1,7 +1,7 @@
 import logging
 from typing import Optional, List
 from datetime import datetime, timezone
-from collections import defaultdict, deque
+from collections import defaultdict
 from dataclasses import replace
 
 from trackey.core.interfaces.tracker import Tracker
@@ -19,7 +19,7 @@ class DeepSortTracker(Tracker):
         try:
             from deep_sort_realtime.deepsort_tracker import DeepSort
         except ModuleNotFoundError as e:
-            logger.error(f"[DeepSortTracker] Run \'pip install deep-sort-realtime\' to run DeepSort tracker")
+            logger.error("[DeepSortTracker] Run \'pip install deep-sort-realtime\' to run DeepSort tracker")
             raise e
         self.tracker = DeepSort(**kwargs)
         self.tracks = defaultdict()
@@ -35,8 +35,8 @@ class DeepSortTracker(Tracker):
         tracks = self._wrap_tracks(ds_tracks, frame)
 
         return tracks
-        
-    
+
+
     def _get_tracker_inputs(self, detections: List[Detection], frame: Frame):
         # Create list of bbox in original frame width and height
         ds_inputs = []
@@ -55,7 +55,7 @@ class DeepSortTracker(Tracker):
                 det.class_name
             ))
         return ds_inputs
-    
+
     def _wrap_tracks(self, ds_tracks, frame: Frame):
         tracks = []
         now = datetime.now(timezone.utc)
@@ -65,7 +65,7 @@ class DeepSortTracker(Tracker):
             active_ids.add(ds_track.track_id)
             if self._skip_track(ds_track):
                 continue
-            
+
             bbox = self._get_bbox(ds_track, frame=frame)
             if self._track_exist(ds_track.track_id):
                 track: Track = self.tracks[ds_track.track_id]
@@ -115,12 +115,12 @@ class DeepSortTracker(Tracker):
             return True
         else:
             return False
-    
-    def _get_bbox(self, ds_track, frame: Frame):
-        l, t, w, h = ds_track.to_ltwh()
 
-        cx = self._clamp((l + w/2) / frame.width)
-        cy = self._clamp((t + h/2) / frame.height)
+    def _get_bbox(self, ds_track, frame: Frame):
+        left, top, w, h = ds_track.to_ltwh()
+
+        cx = self._clamp((left + w/2) / frame.width)
+        cy = self._clamp((top + h/2) / frame.height)
         w = self._clamp(w / frame.width)
         h = self._clamp(h / frame.height)
         return BoundingBox(cx=cx, cy=cy, w=w, h=h)

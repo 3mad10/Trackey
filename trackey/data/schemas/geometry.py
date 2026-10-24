@@ -1,12 +1,12 @@
 from pydantic import BaseModel, ConfigDict
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 
 
 class Point(BaseModel):
     """Point in normalized coordinates (0-1)"""
     x: float
     y: float
-    
+
     def __iter__(self):
         """Allow unpacking: x, y = point"""
         return iter((self.x, self.y))
@@ -15,13 +15,13 @@ class Point(BaseModel):
 class Polygon(BaseModel):
     """Polygon defined by vertices"""
     points: List[Tuple[float, float]]  # List of (x, y) normalized
-    
+
     def contains(self, point: Tuple[float, float]) -> bool:
         """Check if point is inside polygon using ray casting"""
         x, y = point
         n = len(self.points)
         inside = False
-        
+
         p1x, p1y = self.points[0]
         for i in range(1, n + 1):
             p2x, p2y = self.points[i % n]
@@ -32,7 +32,7 @@ class Polygon(BaseModel):
                         if p1x == p2x or x <= xinters:
                             inside = not inside
             p1x, p1y = p2x, p2y
-        
+
         return inside
 
 
@@ -41,8 +41,8 @@ class Line(BaseModel):
     name: str
     start: Tuple[float, float]
     end: Tuple[float, float]
-    
-    def crossed(self, prev_point: Tuple[float, float], 
+
+    def crossed(self, prev_point: Tuple[float, float],
                 curr_point: Tuple[float, float]) -> bool:
         """Check if movement from prev to curr crossed this line"""
         # Line intersection algorithm
@@ -50,14 +50,14 @@ class Line(BaseModel):
         x2, y2 = curr_point
         x3, y3 = self.start
         x4, y4 = self.end
-        
+
         denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
         if abs(denom) < 1e-10:
             return False
-        
+
         t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom
         u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom
-        
+
         return 0 <= t <= 1 and 0 <= u <= 1
 
 
@@ -66,7 +66,7 @@ class Zone(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str
     polygon: Polygon
-    
+
     def contains(self, point: Tuple[float, float]) -> bool:
         """Check if point is in zone"""
         return self.polygon.contains(point)

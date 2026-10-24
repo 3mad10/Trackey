@@ -78,9 +78,9 @@ class StoreBuilder(Builder):
                 f"[StoreBuilder] Unknown repository backend '{backend}' for store '{store_name}'. "
                 f"Available: {list(REPOSITORY_REGISTRY.keys())}"
             )
-            
+
         repo_plugin.validate(cfg)
-        
+
         # Merge store_name into config as fallback for table
         merged_cfg = {**cfg, "table": cfg.get("table", store_name)}
         return repo_plugin.build(merged_cfg)
@@ -95,12 +95,12 @@ class StoreBuilder(Builder):
         backend = cfg.get("backend")
         repo_name = cfg.get("table", store_name)
         params = cfg.get("params") or {}
-        
+
         if backend == "postgres":
             dsn = f"postgresql://{params.get('user')}:{params.get('password')}@{params.get('host')}:{params.get('port')}/{params.get('database')}"
             from trackey.core.stores.embeddings.persist.postgresql import PostgresEmbeddingRepository
             return PostgresEmbeddingRepository(table=f"{repo_name}_embeddings", dsn=dsn)
-        
+
         return None
 
     # ------------------------------------------------------------------ #

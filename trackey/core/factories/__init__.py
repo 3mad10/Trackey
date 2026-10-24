@@ -1,7 +1,6 @@
 from .detector import build_detector
 from .tracker import build_tracker
 from .analyzer import build_analyzer
-from .builder import Builder
 from .event_bus import EventBusBuilder
 from .pipeline import PipelineBuilder
 from .scene import SceneBuilder

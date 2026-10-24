@@ -1,6 +1,5 @@
 from trackey.core.registries.tracking import TRACKER_REGISTRY
 from trackey.core.interfaces.tracker import Tracker
-from trackey.core.scene.scene import Scene
 
 
 def build_tracker(tracker_type: str,  **kwargs) -> Tracker:

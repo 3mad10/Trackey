@@ -1,6 +1,7 @@
 import cv2
 import logging
 import numpy as np
+import time
 from typing import Optional, List, Any, Tuple
 
 from trackey.core.pipeline.constants import BASE_HEIGHT
@@ -50,6 +51,8 @@ class OpenCVRenderer(Renderer):
         self._w:    int = 0
         self._h:    int = 0
         self._scene_drawables: List = []
+        self._last_render_time: Optional[float] = None
+        self._fps: float = 0.0
 
     # ------------------------------------------------------------------ #
     # Renderer interface                                                   #
@@ -67,12 +70,38 @@ class OpenCVRenderer(Renderer):
             self._scene_drawables = self._build_scene_drawables()
 
     def render(self, ctx: FrameContext) -> np.ndarray:
+        now = time.monotonic()
+        if self._last_render_time is not None:
+            dt = now - self._last_render_time
+            if dt > 0:
+                instant_fps = 1.0 / dt
+                self._fps = 0.9 * self._fps + 0.1 * instant_fps if self._fps > 0 else instant_fps
+        self._last_render_time = now
+
         img = ctx.frame.frame.copy()
         self._draw_scene(img)
         self._draw_detections(img, ctx)
         self._draw_tracks(img, ctx)
         self._draw_analytics(img, ctx)
+        self._draw_hud(img, ctx)
         return img
+
+    def _draw_hud(self, img: np.ndarray, ctx: FrameContext) -> None:
+        hud_text = f"FPS: {self._fps:.1f} | Frame: {ctx.frame_id} | Tracks: {len(ctx.tracks)}"
+        # Draw background pill
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        scale = 0.55
+        thickness = 1
+        (tw, th), baseline = cv2.getTextSize(hud_text, font, scale, thickness)
+
+        pad_x, pad_y = 8, 6
+        x1, y1 = 12, 12
+        x2, y2 = x1 + tw + pad_x * 2, y1 + th + pad_y * 2
+
+        overlay = img.copy()
+        cv2.rectangle(overlay, (x1, y1), (x2, y2), (20, 20, 20), -1)
+        cv2.addWeighted(overlay, 0.65, img, 0.35, 0, img)
+        cv2.putText(img, hud_text, (x1 + pad_x, y2 - pad_y), font, scale, (240, 240, 240), thickness, cv2.LINE_AA)
 
     # ------------------------------------------------------------------ #
     # Coordinate helpers                                                   #
@@ -195,7 +224,7 @@ class OpenCVRenderer(Renderer):
                 px_bbox   = det.bbox.to_pixel_xyxy(self._w, self._h)
                 norm_bbox = self._bbox_px_to_norm(px_bbox)
                 x1, y1, _, _ = norm_bbox
-                
+
                 if style.show_bbox:
                     self._draw(BBoxDrawable(
                         bbox=norm_bbox,
@@ -241,7 +270,7 @@ class OpenCVRenderer(Renderer):
                     position=(anchor_x, anchor_y - 0.015),
                     style=style.id_label,
                 ), img)
-            
+
             if style.show_label:
                 anchor_x, anchor_y = self._bbox_anchor_top_left(norm_bbox)
                 self._draw(TextDrawable(
@@ -330,7 +359,7 @@ class OpenCVRenderer(Renderer):
         padding_n   = 0.01
 
         if style.panel.filled:
-            panel_w = max(len(l) for l in lines) * style.text.font_size * 0.012
+            panel_w = max(len(line_str) for line_str in lines) * style.text.font_size * 0.012
             panel_h = len(lines) * line_h_norm + padding_n * 2
             self._draw(PolygonDrawable(
                 points=self._norm_rect_to_points(px, py, panel_w, panel_h),
@@ -417,7 +446,7 @@ class OpenCVRenderer(Renderer):
         # keypoints come from to_pixel_xy() - already pixel coords
         for pt in d.keypoints:
             cv2.circle(img, pt, 3, d.color, -1)
-    
+
     # ------------------------------------------------------------------ #
     # Anchors helpers                                                    #
     # ------------------------------------------------------------------ #

@@ -1,8 +1,6 @@
 import logging
-from typing import List, Optional
+from typing import List
 
-import numpy as np
-import onnxruntime as ort
 
 from trackey.core.interfaces.detector import Detector
 from trackey.core.register import register_detector
@@ -99,7 +97,7 @@ class RetinaFaceDetector(Detector):
                     (float(x) / w, float(y) / h)
                     for x, y in face.kps
                 ]
-                
+
             detections.append(Detection(
                 bbox=bbox,
                 confidence=float(face.det_score),

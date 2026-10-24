@@ -1,6 +1,5 @@
 from typing import List
 from pathlib import Path
-import platform
 import urllib.request
 
 from trackey.core.interfaces.detector import Detector
@@ -63,10 +62,8 @@ class MPLandmarkDetector(Detector):
     def __init__(self, weights="pose_landmarker_lite.task"):
         try:
             import mediapipe as mp
-            from mediapipe.tasks import python
-            from mediapipe.tasks.python import vision
         except ModuleNotFoundError:
-            print("Run \'pip install mediapipe\' to run mediapipe landmark detector")
+            raise ModuleNotFoundError("Run 'pip install mediapipe' to run mediapipe landmark detector")
 
         # TODO: Add to statics
         MODEL_PATH = f"trackey/core/models/{weights}"
@@ -103,8 +100,8 @@ class MPLandmarkDetector(Detector):
             for idx, keypoint in enumerate(pose_landmark):
                 keypoint_name = self.MEDIAPIPE_BODY_PART[idx]
                 points.items.append(Keypoint(name=keypoint_name, point=Point(x=keypoint.x, y=keypoint.y)))
-            dets.append(Detection(class_name='Person', class_id=0, confidence=1, keypoints=points)) 
-        # print(dets)       
+            dets.append(Detection(class_name='Person', class_id=0, confidence=1, keypoints=points))
+        # print(dets)
         return dets
 
     def close(self):
@@ -123,11 +120,11 @@ class MPLandmarkDetector(Detector):
 def draw_landmarks_on_image(rgb_image, detection_result):
     """
     Draw MediaPipe pose landmarks directly on an image using OpenCV.
-    
+
     Parameters:
     - rgb_image: numpy.ndarray, RGB image
     - detection_result: result from MPLandmarkDetector.detect()
-    
+
     Returns:
     - annotated_image: numpy.ndarray with landmarks drawn
     """

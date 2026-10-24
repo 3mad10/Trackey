@@ -27,10 +27,10 @@ class PostgresIdentityRepository(IdentityRepository):
             self._conn = psycopg2.connect(dsn)
         except psycopg2.OperationalError as e:
             logger.error(
-                f"[PostgresIdentityRepository] Could not connect to database"
+                "[PostgresIdentityRepository] Could not connect to database"
             )
             raise ConnectionError(
-                f"Could not connect to PostgreSQL database."
+                "Could not connect to PostgreSQL database."
             ) from e
 
         self._initialize()
@@ -213,7 +213,6 @@ class PostgresIdentityRepository(IdentityRepository):
 
 
 if __name__ == '__main__':
-    from uuid import uuid4
     import os
     from dotenv import load_dotenv
     load_dotenv()

@@ -22,7 +22,7 @@ class FrameContext:
     timestamp:                  float = 0.0
 
     # pipeline data — enriched by nodes
-    detections:                 Dict[DetectionSource, 
+    detections:                 Dict[DetectionSource,
                                      List[Detection]]       = field(default_factory=dict)
 
     # key   = tracktracker_id (UUID)
@@ -40,7 +40,7 @@ class FrameContext:
     events:                     List[BaseEvent]             = field(default_factory=list)
     # Latency, memory, timings
     metadata:                   Dict[str, Any]              = field(default_factory=dict)
-    
+
     # DAG routing — set by SwitchNode/ConditionNode, consumed by executor
     active_branch:              Optional[str]               = None
 

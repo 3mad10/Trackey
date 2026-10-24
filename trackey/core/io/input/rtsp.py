@@ -65,7 +65,7 @@ class RtspSource(InputSource):
             # stream died or frame decode failed
             self.is_open = False
             self.release()
-            
+
             # auto-reconnect backoff
             logger.warning(f"[RtspSource] Connection lost to {self.url}. Attempting to reconnect...")
             backoff = 1.0
@@ -78,13 +78,13 @@ class RtspSource(InputSource):
                         break
                 backoff = min(backoff * 2, 10.0)
                 logger.warning(f"[RtspSource] Reconnect attempt {attempt} failed.")
-            
+
             if not self.is_open:
                 return None
-            
+
         if self.width and self.height:
             frame = cv2.resize(frame, (self.width, self.height))
-            
+
         return Frame(frame=frame)
 
     def release(self):

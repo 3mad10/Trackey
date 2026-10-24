@@ -1,3 +1,4 @@
+import os
 import cv2
 import logging
 
@@ -6,7 +7,6 @@ from trackey.data.schemas.pipeline import PipelineResult
 
 logger = logging.getLogger(__name__)
 
-import os
 
 class ImageStorageSink(OutputSink):
     def __init__(self, path: str):
@@ -15,7 +15,7 @@ class ImageStorageSink(OutputSink):
     def open(self) -> bool:
         os.makedirs(self.path, exist_ok=True)
         return True
-    
+
     def write(self, result: PipelineResult) -> None:
         if result.raw_frame is None:
             return

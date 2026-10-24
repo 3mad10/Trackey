@@ -1,9 +1,9 @@
 import numpy as np
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 
 from trackey.data.schemas.track import Track
-from trackey.data.schemas.detection import Detection, DetectionSource
+from trackey.data.schemas.detection import Detection
 from trackey.data.schemas.event import BaseEvent
 from trackey.data.schemas.frame import Frame
 from trackey.core.context import FrameContext
@@ -47,4 +47,3 @@ class PipelineResult(BaseModel):
             rendered_frame=rendered,
             raw_frame=ctx.frame
         )
-    

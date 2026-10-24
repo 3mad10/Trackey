@@ -1,9 +1,8 @@
 from datetime import datetime, timezone
 from uuid import UUID
-from typing import List, Union, Tuple, Optional
+from typing import List, Tuple, Optional
 from collections import deque
 from dataclasses import dataclass, field
-import numpy as np
 
 from trackey.data.schemas.detection import BoundingBox
 from trackey.data.schemas.identity import Identity

@@ -1,4 +1,3 @@
-import os
 
 from trackey.core.events.subscribers.mail import MailSubscriber
 from trackey.plugins.subscribers.subscriber import SubscriberPlugin

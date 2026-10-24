@@ -1,6 +1,5 @@
 import requests
 import logging
-import json
 from dataclasses import asdict
 
 from trackey.core.interfaces.subscriber import Subscriber
@@ -17,10 +16,21 @@ class WebhookSubscriber(Subscriber):
 
     def on_event(self, event: BaseEvent) -> None:
         try:
-            # We assume event is a dataclass
             payload = asdict(event)
-            # Add the event type name for routing on receiver side
             payload["event_type"] = event.__class__.__name__
+
+            def _serialize(obj):
+                if isinstance(obj, dict):
+                    return {k: _serialize(v) for k, v in obj.items() if k != "frame"}
+                elif isinstance(obj, list):
+                    return [_serialize(item) for item in obj]
+                elif hasattr(obj, "isoformat"):
+                    return obj.isoformat()
+                elif hasattr(obj, "hex"):
+                    return str(obj)
+                return obj
+
+            payload = _serialize(payload)
 
             resp = self.session.post(
                 self.url,

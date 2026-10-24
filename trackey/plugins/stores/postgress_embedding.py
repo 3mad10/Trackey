@@ -16,6 +16,9 @@ class PostgresEmbeddingRepositoryPlugin(EmbeddingRepositoryPlugin):
     def build(cls, cfg: dict) -> EmbeddingRepository:
         from trackey.core.stores.embeddings.persist.postgresql import PostgresEmbeddingRepository
         params = cfg.get("params") or {}
-        repo_name = cfg.get("table", "identities")
+        table = cfg.get("table", "identities")
+        retention_days = params.get("retention_days")
+        if retention_days is not None:
+            retention_days = int(retention_days)
         dsn = f"postgresql://{params.get('user')}:{params.get('password')}@{params.get('host')}:{params.get('port')}/{params.get('database')}"
-        return PostgresEmbeddingRepository(repo_name=repo_name, dsn=dsn)
+        return PostgresEmbeddingRepository(table=table, dsn=dsn, retention_days=retention_days)

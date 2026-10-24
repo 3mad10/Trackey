@@ -140,14 +140,14 @@ class PipelineExecutor:
 
     def _merge(self, ctxs: List[FrameContext]) -> FrameContext:
         base = ctxs[0]
-        
+
         # Merge tracks properly using a dictionary to deduplicate by tracker_id
         merged_tracks = {}
         for c in ctxs:
             for t in c.tracks:
                 if t.tracker_id not in merged_tracks or t.last_seen > merged_tracks[t.tracker_id].last_seen:
                     merged_tracks[t.tracker_id] = t
-        
+
         # ZoneMemberships is a dataclass (not a dict) — merge its inner dicts
         merged_by_track = {}
         merged_by_zone  = {}
@@ -162,7 +162,7 @@ class PipelineExecutor:
                     merged_per_track[track_id] = dict(track_data)
                 else:
                     merged_per_track[track_id].update(track_data)
-                    
+
         return replace(
             base,
             detections={

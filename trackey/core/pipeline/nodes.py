@@ -11,7 +11,10 @@ from trackey.data.schemas.event import EventDefinition
 from trackey.data.schemas.detection import DetectionSource
 from trackey.core.events.bus import EventBus
 from trackey.core.utils.path import PathExtractor
-from trackey.core.interfaces import *
+from trackey.core.interfaces.detector import Detector
+from trackey.core.interfaces.tracker import Tracker
+from trackey.core.interfaces.analyzer import Analyzer
+from trackey.core.interfaces.extractor import FeatureExtractor
 from trackey.core.pipeline.constants import SKIP_BRANCH
 from trackey.core.recognition.identifier import Identifier
 
@@ -271,15 +274,15 @@ class IdentificationNode(PipelineNode):
     def process(self, ctx: FrameContext) -> FrameContext:
         embeddings = ctx.per_track.get("embeddings", {})
         now = datetime.now(timezone.utc)
-        
+
         existing_identities = ctx.per_track.get("identities", {})
         updated_identities = {**existing_identities}
-        
+
         active_track_ids = set()
-        
+
         for track in ctx.tracks:
             active_track_ids.add(track.tracker_id)
-            
+
             if track.tracker_id in self._identity_cache:
                 identity = self._identity_cache[track.tracker_id]
                 entry = {**updated_identities.get(track.tracker_id, {}), self.identifier.modality: identity}
@@ -299,7 +302,7 @@ class IdentificationNode(PipelineNode):
         dead_ids = set(self._identity_cache.keys()) - active_track_ids
         for tid in dead_ids:
             del self._identity_cache[tid]
-                
+
         return replace(ctx, per_track={**ctx.per_track, "identities": updated_identities})
 
     def get_inputs(self) -> List[str]:
@@ -320,12 +323,12 @@ class UnifiedIdentityManagerNode(PipelineNode):
             candidates = identities_map.get(track.tracker_id, {})
             # Strategy: Prioritize face, fallback to body
             final_identity = candidates.get("face") or candidates.get("body") or None
-            
+
             if final_identity:
                 updated_tracks.append(replace(track, identity=final_identity))
             else:
                 updated_tracks.append(track)
-                
+
         return ctx.with_tracks(updated_tracks)
 
     def get_inputs(self) -> List[str]:

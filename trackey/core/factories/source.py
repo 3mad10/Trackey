@@ -26,11 +26,11 @@ class SourceBuilder(Builder):
     )
     def __init__(self, cfg_path: str):
         self.cfg = self._load_yaml(cfg_path)
-    
+
     def build(self) -> InputSource:
         build_source = self._build_source()
         return build_source
-    
+
     # ------------------------------------------------------------------ #
     # Build                                                              #
     # ------------------------------------------------------------------ #
@@ -56,8 +56,8 @@ class SourceBuilder(Builder):
     def _validate_source(self, source_cfg):
         self._validate_structure(source_cfg)
         self._validate_required_fields(source_cfg)
-        
-        
+
+
     def _validate_structure(self, source_cfg):
         if not isinstance(source_cfg, dict):
             msg = (
@@ -66,11 +66,10 @@ class SourceBuilder(Builder):
             )
             logger.error(msg)
             raise ValueError(msg)
-    
+
     def _validate_required_fields(self, source_cfg):
         if "type" not in source_cfg:
             raise ValueError(
                 f"[SourceBuilder] Source missing type.\n"
                 f"{self.SOURCE_CFG_FORMAT}"
             )
-    

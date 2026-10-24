@@ -2,7 +2,6 @@ from pydantic import BaseModel, Field
 from typing import Dict, List, Tuple, Optional, Any
 import numpy as np
 from pydantic import field_validator
-from dataclasses import dataclass
 
 from trackey.data.schemas.detection import BoundingBox
 
@@ -26,7 +25,7 @@ class Point(BaseModel):
     def from_pixel(cls, x: int, y: int, img_width: int, img_height: int):
         """Create from pixel coordinates"""
         return cls(x=x/img_width, y=y/img_height)
-    
+
     def to_numpy(self) -> np.ndarray:
         return np.array([self.x, self.y])
 
@@ -91,7 +90,7 @@ class Keypoints(BaseModel):
             w=min(width, 1.0),
             h=min(height, 1.0)
         )
-    
+
     def to_pixel_xy(self, img_w: int, img_h: int) -> List[Keypoint]:
         keypoints = []
         for item in self.items:

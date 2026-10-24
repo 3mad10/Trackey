@@ -32,7 +32,7 @@ class Builder(ABC):
             raw = f.read()
         resolved = self._resolve_env_vars(raw)
         return yaml.safe_load(resolved)
-    
+
     def _resolve_env_vars(self, text: str) -> str:
         def replace(match):
             var_name = match.group(1)

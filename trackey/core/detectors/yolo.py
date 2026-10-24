@@ -13,7 +13,7 @@ class YoloDetector(Detector):
             from ultralytics import YOLO
         except ModuleNotFoundError:
             raise ModuleNotFoundError("Run 'pip install ultralytics' to use the YOLO detector")
-        
+
         self.model = YOLO(weights)
         self.weights = weights
         self.names = None
@@ -32,7 +32,7 @@ class YoloDetector(Detector):
         if not self.names:
             self.names = results[0].names
         detections = []
-        # We are infering on one frame so get the result of that frame 
+        # We are infering on one frame so get the result of that frame
         frame_detections = results[0].boxes
         for i, detection in enumerate(frame_detections):
             xywhn = detection.xywhn[0]

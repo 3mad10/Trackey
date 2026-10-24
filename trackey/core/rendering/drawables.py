@@ -1,11 +1,5 @@
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-import numpy as np
-import cv2
-from typing import List, Tuple, Optional
-from trackey.data.schemas.detection import Detection
-from trackey.data.schemas.frame import Frame
-from trackey.data.schemas.track import Track
+from typing import List, Tuple
 from trackey.core.rendering.styling import (
     BBoxStyle,
     PointStyle,

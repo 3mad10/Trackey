@@ -118,6 +118,7 @@ stores:
         database: trackey
         user: trackey
         password: ${DB_PASSWORD}
+        # retention_days: 90  # Optional TTL: purge embeddings older than N days on startup
     modalities:
       body:
         backend: faiss
