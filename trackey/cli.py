@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 
 # Ensure all plugins are imported so they register themselves
 
+import trackey.builtins  # Ensure all plugins register themselves  # noqa: F401
 from trackey.core.engine import Engine
 
 from pythonjsonlogger import jsonlogger
